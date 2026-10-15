@@ -310,3 +310,47 @@ describe('spectators over sockets', () => {
     await kicked;
   });
 });
+
+describe('bots over sockets', () => {
+  it('only the host adds bots with a valid level', async () => {
+    const { a, b } = await twoPlayers();
+    expect((await b.request('room:addBot', { level: 'easy' })).error).toBe('Nur der Host kann das');
+    expect((await a.request('room:addBot', { level: 'godlike' })).error).toBe('Ungültige Bot-Stufe');
+    const ok = await a.request('room:addBot', { level: 'hard' });
+    expect(ok.ok).toBe(true);
+    expect(ok.id).toMatch(/^bot-/);
+    const s = await b.until((x) => x.room.members.some((m) => m.bot));
+    expect(s.room.members.find((m) => m.bot)?.bot).toEqual({ level: 'hard' });
+  });
+
+  it('bots flip their initial cards and take their turns on their own', async () => {
+    const a = client();
+    await a.request('room:create', { name: 'Anna' });
+    const added = await a.request('room:addBot', { level: 'normal' });
+    expect((await a.request('game:start')).ok).toBe(true);
+    const flipped = await a.until((s) => {
+      const bot = s.game?.players.find((p) => p.id === added.id);
+      return (bot?.grid.filter((c) => c?.up).length ?? 0) >= 2;
+    });
+    expect(flipped.game?.players).toHaveLength(2);
+    await a.request('game:action', { type: 'flipInitial', slot: 0 });
+    await a.request('game:action', { type: 'flipInitial', slot: 1 });
+    await a.until((s) => s.game?.phase === 'draw' || s.game?.phase === 'place');
+    // whoever starts: after the human finished a turn the bot moves without any client request
+    let guard = 0;
+    for (;;) {
+      const s = a.state!.game!;
+      if (s.current === a.state!.me && s.phase === 'draw') {
+        await a.request('game:action', { type: 'drawFromDeck' });
+        await a.request('game:action', { type: 'discardDrawn' });
+        await a.request('game:action', {
+          type: 'flipHidden',
+          slot: s.players.find((p) => p.id === s.me)!.grid.findIndex((c) => c && !c.up),
+        });
+      }
+      if (a.state!.game!.events.some((e) => e.by === added.id)) break;
+      if (++guard > 200) throw new Error('the bot never moved');
+      await new Promise((r) => setTimeout(r, 15));
+    }
+  });
+});

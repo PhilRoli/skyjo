@@ -148,6 +148,12 @@ export function createSkyjoServer(
       broadcast(s.code);
       return { wantsToPlay };
     });
+    on('room:addBot', ({ level }) => {
+      const s = session();
+      const id = manager.addBot(s.code, s.playerId, level);
+      broadcast(s.code);
+      return { id };
+    });
     on('game:start', () => {
       const s = session();
       manager.start(s.code, s.playerId);
