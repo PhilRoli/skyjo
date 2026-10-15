@@ -1,5 +1,5 @@
 import { winners } from './rules';
-import type { GameState, Phase, RoundResult } from './types';
+import type { GameEvent, GameState, Phase, RoundResult } from './types';
 
 export interface PublicCell {
   up: boolean;
@@ -19,6 +19,8 @@ export interface PlayerView {
   finisher: string | null;
   lastRound: RoundResult | null;
   winners: string[];
+  events: GameEvent[];
+  eventSeq: number;
 }
 
 export interface RoomInfo {
@@ -58,5 +60,7 @@ export function viewFor(state: GameState, me: string): PlayerView {
     finisher: state.finisher,
     lastRound: state.lastRound,
     winners: state.phase === 'gameOver' ? winners(state) : [],
+    events: state.events,
+    eventSeq: state.eventSeq,
   };
 }

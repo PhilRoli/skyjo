@@ -35,4 +35,10 @@ describe('viewFor', () => {
     expect(v.current).toBeNull();
     expect(v.winners).toEqual([]);
   });
+
+  it('passes the turn events and their sequence number to every player', () => {
+    const s = { ...base(), events: [{ kind: 'draw' as const, by: 'A' }], eventSeq: 7 };
+    expect(viewFor(s, 'B').events).toEqual([{ kind: 'draw', by: 'A' }]);
+    expect(viewFor(s, 'B').eventSeq).toBe(7);
+  });
 });

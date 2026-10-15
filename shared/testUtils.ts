@@ -33,6 +33,8 @@ export function mkState(grids: Cell[][], extra: Partial<GameState> = {}): GameSt
     pendingFinal: [],
     initialDone: [],
     lastRound: null,
+    events: [],
+    eventSeq: 0,
     ...extra,
   };
 }
