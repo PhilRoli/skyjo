@@ -45,6 +45,8 @@ export interface RoomInfo {
 export interface DevInfo {
   grids: Record<string, (number | null)[]>;
   drawn: number | null;
+  /** Top card of the draw pile (the next one drawn). */
+  next: number | null;
   /** Cards left in the draw pile as value counts (no order, so the next card stays unknown). */
   deck: { value: number; count: number }[];
 }
@@ -94,6 +96,7 @@ export function devViewFor(state: GameState): DevInfo {
   return {
     grids: Object.fromEntries(state.players.map((p) => [p.id, p.grid.map((c) => (c ? c.value : null))])),
     drawn: state.drawn,
+    next: state.deck.at(-1) ?? null,
     deck: [...counts].map(([value, count]) => ({ value, count })).sort((a, b) => a.value - b.value),
   };
 }

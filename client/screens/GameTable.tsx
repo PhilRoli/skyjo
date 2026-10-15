@@ -192,7 +192,7 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
       {dev && (
         <Paper sx={{ p: 1, alignSelf: 'center' }}>
           <Typography variant="caption" component="div" sx={{ fontWeight: 700 }}>
-            Dev · Stapel ({g.deckCount}){dev.drawn !== null && g.drawn === null && ` · Gezogen: ${dev.drawn}`}
+            Dev · Stapel ({g.deckCount}) · Oben: {dev.next ?? '–'}{dev.drawn !== null && g.drawn === null && ` · Gezogen: ${dev.drawn}`}
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
             {dev.deck.map((d) => (

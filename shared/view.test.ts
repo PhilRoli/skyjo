@@ -62,6 +62,7 @@ describe('devViewFor', () => {
     const dev = devViewFor(state);
     expect(dev.grids.A).toEqual(FILL);
     expect(dev.drawn).toBe(5);
+    expect(dev.next).toBe(-2);
     expect(dev.deck).toEqual([
       { value: -2, count: 1 },
       { value: 4, count: 2 },
