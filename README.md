@@ -1,6 +1,6 @@
-# Skyjo
+# <img src="./client/public/icon.svg" alt="Skyjo Logo" height="32" align="top"> Skyjo
 
-Skyjo im Browser für 2 bis 8 Spieler. Beitritt per 4-stelligem Raumcode, ohne Account, deutsche Oberfläche.
+Skyjo im Browser für 2 bis 8 Spieler. Beitritt per 4-stelligem Raumcode, ohne Account.
 
 Live: https://skyjo.rolinek.at
 
@@ -49,3 +49,7 @@ gh release create vX.Y.Z --target main
 ```
 
 Der Workflow `Deploy` prüft Typen, Tests und Build, rsynct auf den Server und startet den Container neu. Die Release Notes für die App stehen in `shared/releaseNotes.ts` und werden vorher ergänzt.
+
+## Hinweis zum Urheberrecht
+
+Skyjo ist ein Kartenspiel von Magilano. Alle Rechte am Spiel, am Namen und an den Regeln liegen beim Originalhersteller. Dieses Projekt ist ein nicht-kommerzielles Fan-Projekt und steht in keiner Verbindung zum Hersteller.
