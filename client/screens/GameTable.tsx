@@ -2,11 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import { useAnimations } from '../animations';
 import { describeEvents } from '../../shared/events';
 import { visibleSum } from '../../shared/score';
 import type { Action } from '../../shared/types';
@@ -25,6 +30,8 @@ interface Props {
   play: () => void;
   leave: () => void;
 }
+
+const LAST_ROUND_RED = '#f44336';
 
 export function GameTable({ state, act, remove, nudge, next, rematch, play, leave }: Props) {
   const g = state.game!;
@@ -46,6 +53,8 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
   const myUp = me ? me.grid.filter((c) => c?.up).length : 2;
   const nameOf = (id: string | null) => g.players.find((p) => p.id === id)?.name ?? '';
   const over = g.phase === 'roundOver' || g.phase === 'gameOver';
+  const { enabled: animations } = useAnimations();
+  const [pendingClose, setPendingClose] = useState<Action | null>(null);
   const [nudgeCooling, setNudgeCooling] = useState(false);
   const isBot = (id: string | null) => !!state.room.members.find((m) => m.id === id)?.bot;
   const canNudge = !spectator && !myTurn && g.current !== null && !over && !isBot(g.current);
@@ -71,6 +80,12 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
     };
   }, [myTurn]);
 
+  /** Revealing the very last hidden card ends the round for everyone else, so ask first. */
+  const hiddenCount = me ? me.grid.filter((c) => c !== null && !c.up).length : 0;
+  const closes = (slot: number) => hiddenCount === 1 && !!me && me.grid[slot] !== null && !me.grid[slot]!.up;
+  const closeOrAct = (a: Extract<Action, { slot: number }>) => (closes(a.slot) ? setPendingClose(a) : act(a));
+  const lastRound = !!g.finisher && !over;
+
   let hint = '';
   let clickable: (i: number) => boolean = () => false;
   let onSlot: (i: number) => void = () => {};
@@ -91,12 +106,12 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
           : 'Karte tauschen'
         : `${nameOf(g.current)} ist dran`;
       clickable = (i) => myTurn && !!me && me.grid[i] !== null;
-      onSlot = (slot) => act({ type: 'swap', slot });
+      onSlot = (slot) => closeOrAct({ type: 'swap', slot });
       break;
     case 'flipAfterDiscard':
       hint = myTurn ? 'Decke eine Karte auf' : `${nameOf(g.current)} ist dran`;
       clickable = (i) => myTurn && hidden(i);
-      onSlot = (slot) => act({ type: 'flipHidden', slot });
+      onSlot = (slot) => closeOrAct({ type: 'flipHidden', slot });
       break;
   }
   if (g.finisher && !over) hint += ` · ${nameOf(g.finisher)}: letzte Runde`;
@@ -106,8 +121,45 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
 
   return (
     <Stack spacing={2} sx={{ mt: 2 }}>
+      {lastRound && (
+        <Box
+          aria-hidden
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1200,
+            pointerEvents: 'none',
+            boxShadow: `inset 0 0 0 4px ${LAST_ROUND_RED}`,
+            animation: animations ? 'skyjo-last-round 1.6s ease-in-out infinite' : 'none',
+            '@keyframes skyjo-last-round': {
+              '0%, 100%': { boxShadow: `inset 0 0 0 4px ${LAST_ROUND_RED}, inset 0 0 12px 2px rgba(244,67,54,0.35)` },
+              '50%': { boxShadow: `inset 0 0 0 4px ${LAST_ROUND_RED}, inset 0 0 48px 14px rgba(244,67,54,0.75)` },
+            },
+          }}
+        />
+      )}
+      <Dialog open={pendingClose !== null} onClose={() => setPendingClose(null)}>
+        <DialogTitle sx={{ fontWeight: 700 }}>Runde beenden?</DialogTitle>
+        <DialogContent>
+          Du deckst deine letzte Karte auf. Danach hat jeder andere noch einen letzten Zug.
+        </DialogContent>
+        <DialogActions>
+          <Button color="inherit" onClick={() => setPendingClose(null)}>
+            Abbrechen
+          </Button>
+          <Button
+            color="warning"
+            onClick={() => {
+              if (pendingClose) act(pendingClose);
+              setPendingClose(null);
+            }}
+          >
+            Zudrehen
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Box sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: 'background.default', py: 1 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, color: lastRound ? LAST_ROUND_RED : undefined }}>
           {over ? (g.phase === 'gameOver' ? 'Spiel beendet' : `Runde ${g.round} beendet`) : hint}
           <Typography component="span" variant="caption" sx={{ ml: 1, fontWeight: 400, opacity: 0.7 }}>
             Ziel {g.target}
