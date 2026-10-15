@@ -143,7 +143,13 @@ export class RoomManager {
     }
     const spectator = room.game !== null;
     if (spectator) {
-      if (room.members.filter((m) => m.spectator).length >= MAX_SPECTATORS) throw new Error('Zu viele Zuschauer');
+      const spectators = room.members.filter((m) => m.spectator);
+      if (spectators.length >= MAX_SPECTATORS) {
+        // Closed tabs must not block newcomers: make room by dropping a disconnected spectator.
+        const stale = spectators.find((m) => !m.connected);
+        if (!stale) throw new Error('Zu viele Zuschauer');
+        room.members = room.members.filter((m) => m !== stale);
+      }
     } else if (this.players(room).length >= MAX_PLAYERS) {
       throw new Error('Raum ist voll');
     }
@@ -354,7 +360,7 @@ export class RoomManager {
         hostId: room.hostId,
         started: room.game !== null,
         target: room.target,
-        spectatorCount: room.members.filter((m) => m.spectator).length,
+        spectatorCount: room.members.filter((m) => m.spectator && m.connected).length,
         members: room.members.map((m) => ({
           id: m.id,
           name: m.name,
@@ -410,7 +416,7 @@ export class RoomManager {
     let removed = 0;
     for (const [code, room] of this.rooms) {
       const idle = this.now() - room.lastActivity > ROOM_TTL_MS;
-      if (idle && !room.members.some((m) => !m.bot && m.connected)) {
+      if (idle && !room.members.some((m) => !m.bot && !m.spectator && m.connected)) {
         this.rooms.delete(code);
         removed++;
       }

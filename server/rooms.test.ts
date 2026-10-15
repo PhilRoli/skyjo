@@ -594,3 +594,48 @@ describe('bots', () => {
     expect(() => m.addBot(code, host.playerId, 'easy')).not.toThrow();
   });
 });
+
+describe('spectators: disconnected tabs', () => {
+  function running(names: string[]) {
+    const l = lobby(names);
+    l.m.start(l.code, l.host.playerId);
+    return l;
+  }
+
+  it('counts only connected spectators', () => {
+    const { m, code, host } = running(['Anna', 'Ben']);
+    const z = m.join(code, 'Zoe').playerId;
+    expect(m.stateFor(code, host.playerId).room.spectatorCount).toBe(1);
+    m.setConnected(code, z, false);
+    expect(m.stateFor(code, host.playerId).room.spectatorCount).toBe(0);
+    m.setConnected(code, z, true);
+    expect(m.stateFor(code, host.playerId).room.spectatorCount).toBe(1);
+  });
+
+  it('lets a newcomer replace a disconnected spectator when the cap is reached, but not a connected one', () => {
+    const { m, code } = running(['Anna', 'Ben']);
+    const ids: string[] = [];
+    for (let i = 0; i < 20; i++) ids.push(m.join(code, `S${i}`).playerId);
+    expect(() => m.join(code, 'Extra')).toThrow('Zu viele Zuschauer');
+    m.setConnected(code, ids[3], false);
+    const joined = m.join(code, 'Extra');
+    expect(joined.role).toBe('spectator');
+    const members = m.stateFor(code, joined.playerId).room.members;
+    expect(members.filter((x) => x.spectator)).toHaveLength(20);
+    expect(members.some((x) => x.id === ids[3])).toBe(false);
+  });
+
+  it('a lone connected spectator does not keep a room without players alive', () => {
+    let t = 0;
+    const m = new RoomManager(seeded(5), () => t);
+    const host = m.create('Anna');
+    const ben = m.join(host.code, 'Ben');
+    m.start(host.code, host.playerId);
+    const z = m.join(host.code, 'Zoe');
+    m.setConnected(host.code, host.playerId, false);
+    m.setConnected(host.code, ben.playerId, false);
+    t = 3 * 3600 * 1000;
+    expect(m.sweep()).toBe(1);
+    expect(() => m.stateFor(host.code, z.playerId)).toThrow('Raum nicht gefunden');
+  });
+});

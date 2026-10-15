@@ -96,22 +96,22 @@ export class BotRunner {
   private run(code: string, id: string): void {
     const key = `${code}:${id}`;
     this.timers.delete(key);
-    const entry = this.manager.botViews(code).find((b) => b.id === id);
-    if (!entry) return;
-    const mem = this.memory(key);
-    observe(mem, entry.view);
-    const action = decide(entry.view, entry.level, this.rng, mem);
-    if (!action) return;
+    // Runs inside a timer: nothing may escape here, an uncaught exception would end the whole process.
     try {
+      const entry = this.manager.botViews(code).find((b) => b.id === id);
+      if (!entry) return;
+      const mem = this.memory(key);
+      observe(mem, entry.view);
+      const action = decide(entry.view, entry.level, this.rng, mem);
+      if (!action) return;
       this.manager.act(code, id, action);
-    } catch (e) {
-      this.onError(e);
-      return;
-    }
-    try {
       this.onActed(code);
     } catch (e) {
-      this.onError(e);
+      try {
+        this.onError(e);
+      } catch {
+        /* the error handler itself must not take the process down either */
+      }
     }
   }
 }

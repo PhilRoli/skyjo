@@ -124,6 +124,18 @@ describe('BotRunner', () => {
     runner.dispose();
   });
 
+  it('reports an unexpected failure inside a bot timer instead of crashing the process', async () => {
+    const errors: unknown[] = [];
+    const { m, h, code, runner } = setup(['easy'], 20, (e) => errors.push(e));
+    m.start(code, h.playerId); // schedules the bot's first flip
+    m.botViews = () => {
+      throw new Error('boom');
+    };
+    await until(() => errors.length > 0);
+    expect((errors[0] as Error).message).toBe('boom');
+    runner.dispose();
+  });
+
   it('reports a bot error instead of throwing', async () => {
     const errors: unknown[] = [];
     const { m, h, code, runner } = setup(['easy'], 0, (e) => errors.push(e));
