@@ -8,6 +8,7 @@ import {
   WIN_THRESHOLD,
   type Action,
   type Cell,
+  type GameEvent,
   type GameState,
   type PlayerState,
   type Rng,
@@ -36,6 +37,8 @@ export function newGame(members: { id: string; name: string }[], rng: Rng): Game
     pendingFinal: [],
     initialDone: [],
     lastRound: null,
+    events: [],
+    eventSeq: 0,
   };
   return startRound(state, rng);
 }
@@ -59,6 +62,7 @@ export function startRound(prev: GameState, rng: Rng): GameState {
   state.pendingFinal = [];
   state.initialDone = [];
   state.lastRound = null;
+  state.events = [];
   return state;
 }
 
@@ -107,21 +111,27 @@ function drawCard(state: GameState, rng: Rng): number {
   return card;
 }
 
-export function clearColumns(grid: Cell[], discard: number[]): void {
+export function clearColumns(grid: Cell[], discard: number[]): { column: number; value: number }[] {
+  const cleared: { column: number; value: number }[] = [];
   for (let c = 0; c < COLUMNS; c++) {
     const col = grid.slice(c * ROWS, c * ROWS + ROWS);
     if (col.every((x) => x && x.up && x.value === col[0]!.value)) {
       for (const x of col) discard.push(x!.value);
       for (let r = 0; r < ROWS; r++) grid[c * ROWS + r] = null;
+      cleared.push({ column: c, value: col[0]!.value });
     }
   }
+  return cleared;
 }
+
+const clearEvents = (by: string, cleared: { column: number; value: number }[]): GameEvent[] =>
+  cleared.map((c) => ({ kind: 'clear', by, column: c.column, value: c.value }));
 
 const allRevealed = (p: PlayerState): boolean => p.grid.every((c) => c === null || c.up);
 
 function endTurn(state: GameState): GameState {
   const player = state.players[state.current];
-  clearColumns(player.grid, state.discard);
+  state.events.push(...clearEvents(player.id, clearColumns(player.grid, state.discard)));
   if (state.finisher === null) {
     if (allRevealed(player)) {
       state.finisher = player.id;
@@ -152,7 +162,7 @@ export function scoreRound(state: GameState): GameState {
   const scores: Record<string, number> = {};
   for (const p of act) {
     for (const c of p.grid) if (c) c.up = true;
-    clearColumns(p.grid, state.discard);
+    state.events.push(...clearEvents(p.id, clearColumns(p.grid, state.discard)));
     scores[p.id] = p.grid.reduce((s, c) => s + (c ? c.value : 0), 0);
   }
   let doubled = false;
@@ -173,7 +183,12 @@ export function scoreRound(state: GameState): GameState {
 }
 
 export function apply(prev: GameState, playerId: string, action: Action, rng: Rng): GameState {
-  const state = structuredClone(prev);
+  const state = applyAction(structuredClone(prev), playerId, action, rng);
+  if (action.type !== 'flipInitial') state.eventSeq += 1;
+  return state;
+}
+
+function applyAction(state: GameState, playerId: string, action: Action, rng: Rng): GameState {
   const idx = state.players.findIndex((p) => p.id === playerId && !p.left);
   if (idx < 0) throw new Error('Unbekannter Spieler');
   const player = state.players[idx];
@@ -182,6 +197,7 @@ export function apply(prev: GameState, playerId: string, action: Action, rng: Rn
       return flipInitial(state, player, action.slot);
     case 'drawFromDeck': {
       requireTurn(state, idx, 'draw');
+      state.events = [{ kind: 'draw', by: playerId }];
       state.drawn = drawCard(state, rng);
       state.drawnFrom = 'deck';
       state.phase = 'place';
@@ -191,6 +207,7 @@ export function apply(prev: GameState, playerId: string, action: Action, rng: Rn
       requireTurn(state, idx, 'draw');
       const card = state.discard.pop();
       if (card === undefined) throw new Error('Ablagestapel ist leer');
+      state.events = [{ kind: 'takeDiscard', by: playerId, value: card }];
       state.drawn = card;
       state.drawnFrom = 'discard';
       state.phase = 'place';
@@ -201,6 +218,7 @@ export function apply(prev: GameState, playerId: string, action: Action, rng: Rn
       checkSlot(action.slot);
       const cell = player.grid[action.slot];
       if (!cell) throw new Error('Dieser Platz ist leer');
+      state.events.push({ kind: 'swap', by: playerId, value: state.drawn!, replaced: cell.value });
       state.discard.push(cell.value);
       player.grid[action.slot] = { value: state.drawn!, up: true };
       state.drawn = null;
@@ -210,6 +228,7 @@ export function apply(prev: GameState, playerId: string, action: Action, rng: Rn
     case 'discardDrawn': {
       requireTurn(state, idx, 'place');
       if (state.drawnFrom !== 'deck') throw new Error('Die Karte von der Ablage musst du tauschen');
+      state.events.push({ kind: 'discard', by: playerId, value: state.drawn! });
       state.discard.push(state.drawn!);
       state.drawn = null;
       state.drawnFrom = null;
@@ -222,6 +241,7 @@ export function apply(prev: GameState, playerId: string, action: Action, rng: Rn
       checkSlot(action.slot);
       const cell = player.grid[action.slot];
       if (!cell || cell.up) throw new Error('Wähle eine verdeckte Karte');
+      state.events.push({ kind: 'flip', by: playerId, value: cell.value });
       cell.up = true;
       return endTurn(state);
     }
