@@ -138,6 +138,12 @@ export function createSkyjoServer(
       manager.setTarget(s.code, s.playerId, target);
       broadcast(s.code);
     });
+    on('room:play', () => {
+      const s = session();
+      const wantsToPlay = manager.requestPlay(s.code, s.playerId);
+      broadcast(s.code);
+      return { wantsToPlay };
+    });
     on('game:start', () => {
       const s = session();
       manager.start(s.code, s.playerId);
@@ -173,7 +179,12 @@ export function createSkyjoServer(
     });
     on('room:leave', () => {
       const s = session();
-      manager.leave(s.code, s.playerId);
+      const { closedFor } = manager.leave(s.code, s.playerId);
+      for (const id of closedFor) {
+        const target = personal(s.code, id);
+        io.to(target).emit('kicked');
+        io.in(target).socketsLeave([s.code, target]);
+      }
       socket.leave(s.code);
       socket.leave(personal(s.code, s.playerId));
       data.code = undefined;

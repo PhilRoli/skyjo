@@ -51,7 +51,7 @@ describe('start and play', () => {
     expect(() => m.start(code, b.playerId)).toThrow('Nur der Host kann das');
     m.start(code, host.playerId);
     expect(m.stateFor(code, host.playerId).game?.phase).toBe('initialFlip');
-    expect(() => m.join(code, 'Cara')).toThrow('Das Spiel läuft bereits');
+    expect(m.join(code, 'Cara').role).toBe('spectator');
     expect(() => m.start(code, host.playerId)).toThrow('Das Spiel läuft bereits');
   });
 
@@ -319,5 +319,158 @@ describe('nudge', () => {
     expect(() => m.nudge(code, other.playerId)).toThrow('Bitte kurz warten');
     t = 10_001;
     expect(m.nudge(code, other.playerId).targetId).toBeTruthy();
+  });
+});
+
+describe('spectators', () => {
+  function running(names: string[]) {
+    const l = lobby(names);
+    l.m.start(l.code, l.host.playerId);
+    return l;
+  }
+  const NOT_ALLOWED = 'Zuschauer können nicht spielen';
+
+  it('joins a running game as spectator and sees the table without an own grid', () => {
+    const { m, code } = running(['Anna', 'Ben']);
+    const s = m.join(code, 'Zoe');
+    expect(s.role).toBe('spectator');
+    const st = m.stateFor(code, s.playerId);
+    expect(st.role).toBe('spectator');
+    expect(st.game?.me).toBe(s.playerId);
+    expect(st.game?.players.map((p) => p.name)).toEqual(['Anna', 'Ben']);
+    for (const p of st.game!.players) for (const c of p.grid) if (c && !c.up) expect(c.value).toBeNull();
+    expect(st.room.spectatorCount).toBe(1);
+    expect(st.room.members.find((x) => x.id === s.playerId)?.spectator).toBe(true);
+  });
+
+  it('lobby joiners stay players and spectators never take one of the 8 player seats', () => {
+    const l = lobby(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
+    l.m.start(l.code, l.host.playerId);
+    expect(l.m.join(l.code, 'S1').role).toBe('spectator');
+    const lobbyOnly = lobby(['Anna']);
+    expect(lobbyOnly.m.join(lobbyOnly.code, 'Ben').role).toBe('player');
+  });
+
+  it('keeps names unique across players and spectators and caps spectators at 20', () => {
+    const { m, code } = running(['Anna', 'Ben']);
+    m.join(code, 'Zoe');
+    expect(() => m.join(code, 'zoe')).toThrow('Name bereits vergeben');
+    expect(() => m.join(code, 'ANNA')).toThrow('Name bereits vergeben');
+    for (let i = 1; i < 20; i++) m.join(code, `S${i}`);
+    expect(() => m.join(code, 'Zu viel')).toThrow('Zu viele Zuschauer');
+  });
+
+  it('cannot act, nudge or use any host control', () => {
+    const { m, code } = running(['Anna', 'Ben']);
+    const s = m.join(code, 'Zoe').playerId;
+    expect(() => m.act(code, s, { type: 'flipInitial', slot: 0 })).toThrow(NOT_ALLOWED);
+    expect(() => m.nudge(code, s)).toThrow(NOT_ALLOWED);
+    expect(() => m.start(code, s)).toThrow(NOT_ALLOWED);
+    expect(() => m.next(code, s)).toThrow(NOT_ALLOWED);
+    expect(() => m.rematch(code, s)).toThrow(NOT_ALLOWED);
+    expect(() => m.setTarget(code, s, 50)).toThrow(NOT_ALLOWED);
+    expect(() => m.remove(code, s, s)).toThrow(NOT_ALLOWED);
+  });
+
+  it('never becomes host, neither when the host drops nor when the spectator reconnects', () => {
+    const { m, code, host, rest } = running(['Anna', 'Ben']);
+    const s = m.join(code, 'Zoe').playerId;
+    m.setConnected(code, rest[0].playerId, false);
+    m.setConnected(code, host.playerId, false);
+    expect(m.stateFor(code, s).room.hostId).toBe(host.playerId);
+    m.setConnected(code, s, false);
+    m.setConnected(code, s, true);
+    expect(m.stateFor(code, s).room.hostId).toBe(host.playerId);
+  });
+
+  it('a spectator can leave without touching the game, and the host can remove spectators', () => {
+    const { m, code, host } = running(['Anna', 'Ben']);
+    const a = m.join(code, 'Zoe').playerId;
+    const b = m.join(code, 'Yan').playerId;
+    expect(m.leave(code, a)).toEqual({ closedFor: [] });
+    m.remove(code, host.playerId, b);
+    const st = m.stateFor(code, host.playerId);
+    expect(st.room.spectatorCount).toBe(0);
+    expect(st.game?.players).toHaveLength(2);
+    expect(st.game?.phase).toBe('initialFlip');
+  });
+
+  it('closes the room and reports the spectators when the last player leaves', () => {
+    const { m, code, host, rest } = running(['Anna', 'Ben']);
+    const s = m.join(code, 'Zoe').playerId;
+    m.leave(code, rest[0].playerId);
+    expect(m.leave(code, host.playerId).closedFor).toEqual([s]);
+    expect(() => m.stateFor(code, s)).toThrow('Raum nicht gefunden');
+  });
+
+  it('rejoin restores the spectator role', () => {
+    const { m, code } = running(['Anna', 'Ben']);
+    const s = m.join(code, 'Zoe');
+    m.setConnected(code, s.playerId, false);
+    const r = m.rejoin(code, s.token);
+    expect(r.role).toBe('spectator');
+    expect(m.stateFor(code, r.playerId).role).toBe('spectator');
+  });
+
+  it('survives a snapshot restore as spectator', () => {
+    const { m, code } = running(['Anna', 'Ben']);
+    const s = m.join(code, 'Zoe');
+    const m2 = mk();
+    m2.restore(JSON.parse(JSON.stringify(m.snapshot())));
+    expect(m2.rejoin(code, s.token).role).toBe('spectator');
+  });
+});
+
+describe('play request and rematch', () => {
+  function gameOverWithSpectator() {
+    const l = lobby(['Anna', 'Ben']);
+    l.m.start(l.code, l.host.playerId);
+    const spectator = l.m.join(l.code, 'Zoe');
+    l.m.leave(l.code, l.rest[0].playerId); // only Anna is active now -> game over
+    return { ...l, spectator };
+  }
+
+  it('is only for spectators and only after the game ended; toggles', () => {
+    const l = lobby(['Anna', 'Ben']);
+    l.m.start(l.code, l.host.playerId);
+    const z = l.m.join(l.code, 'Zoe');
+    expect(() => l.m.requestPlay(l.code, z.playerId)).toThrow('Gerade nicht möglich');
+    expect(() => l.m.requestPlay(l.code, l.host.playerId)).toThrow('Du spielst bereits mit');
+    l.m.leave(l.code, l.rest[0].playerId);
+    expect(l.m.requestPlay(l.code, z.playerId)).toBe(true);
+    expect(l.m.requestPlay(l.code, z.playerId)).toBe(false);
+  });
+
+  it('promotes spectators who asked to play when the host starts the rematch', () => {
+    const { m, code, host, spectator } = gameOverWithSpectator();
+    m.requestPlay(code, spectator.playerId);
+    m.rematch(code, host.playerId);
+    const st = m.stateFor(code, host.playerId);
+    expect(st.game?.players.map((p) => p.name)).toEqual(['Anna', 'Zoe']);
+    expect(st.game?.phase).toBe('initialFlip');
+    const zoe = st.room.members.find((x) => x.id === spectator.playerId)!;
+    expect(zoe.spectator).toBe(false);
+    expect(zoe.wantsToPlay).toBe(false);
+    expect(m.stateFor(code, spectator.playerId).role).toBe('player');
+  });
+
+  it('promotes only the spectators who asked and keeps the others', () => {
+    const l = lobby(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
+    l.m.start(l.code, l.host.playerId);
+    const s1 = l.m.join(l.code, 'S1');
+    const s2 = l.m.join(l.code, 'S2');
+    for (const r of l.rest.slice(0, 6)) l.m.leave(l.code, r.playerId); // 2 active left -> still running
+    l.m.leave(l.code, l.rest[6].playerId); // 1 active left -> game over
+    l.m.requestPlay(l.code, s1.playerId);
+    l.m.rematch(l.code, l.host.playerId);
+    const st = l.m.stateFor(l.code, l.host.playerId);
+    expect(st.game?.players.map((p) => p.name)).toEqual(['A', 'S1']);
+    expect(st.room.members.find((x) => x.id === s2.playerId)?.spectator).toBe(true);
+  });
+
+  it('rejects a rematch with fewer than 2 players without promoting anyone', () => {
+    const { m, code, host, spectator } = gameOverWithSpectator();
+    expect(() => m.rematch(code, host.playerId)).toThrow('2 bis 8');
+    expect(m.stateFor(code, host.playerId).room.members.find((x) => x.id === spectator.playerId)?.spectator).toBe(true);
   });
 });

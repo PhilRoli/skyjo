@@ -6,6 +6,7 @@ import { viewFor, type ClientState } from '../shared/view';
 const MAX_NAME = 16;
 const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
 const HOST_GRACE_MS = 30_000;
+const MAX_SPECTATORS = 20;
 const NUDGE_COOLDOWN_MS = 10_000;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -14,6 +15,8 @@ interface Member {
   name: string;
   token: string;
   connected: boolean;
+  spectator?: boolean;
+  wantsToPlay?: boolean;
 }
 
 interface Room {
@@ -68,8 +71,18 @@ export class RoomManager {
     return m;
   }
 
+  private players(room: Room): Member[] {
+    return room.members.filter((m) => !m.spectator);
+  }
+
+  private requirePlayer(room: Room, playerId: string): Member {
+    const m = this.member(room, playerId);
+    if (m.spectator) throw new Error('Zuschauer können nicht spielen');
+    return m;
+  }
+
   private requireHost(room: Room, playerId: string): void {
-    this.member(room, playerId);
+    this.requirePlayer(room, playerId);
     if (room.hostId !== playerId) throw new Error('Nur der Host kann das');
   }
 
@@ -113,15 +126,26 @@ export class RoomManager {
   join(code: string, name: string) {
     const room = this.room(code);
     const clean = cleanName(name);
-    if (room.game) throw new Error('Das Spiel läuft bereits');
-    if (room.members.length >= MAX_PLAYERS) throw new Error('Raum ist voll');
     if (room.members.some((m) => m.name.toLowerCase() === clean.toLowerCase())) {
       throw new Error('Name bereits vergeben');
     }
-    const member = this.newMember(clean);
+    const spectator = room.game !== null;
+    if (spectator) {
+      if (room.members.filter((m) => m.spectator).length >= MAX_SPECTATORS) throw new Error('Zu viele Zuschauer');
+    } else if (this.players(room).length >= MAX_PLAYERS) {
+      throw new Error('Raum ist voll');
+    }
+    const member: Member = spectator
+      ? { ...this.newMember(clean), spectator: true, wantsToPlay: false }
+      : this.newMember(clean);
     room.members.push(member);
     this.touch(room);
-    return { code: room.code, playerId: member.id, token: member.token };
+    return {
+      code: room.code,
+      playerId: member.id,
+      token: member.token,
+      role: (spectator ? 'spectator' : 'player') as 'player' | 'spectator',
+    };
   }
 
   rejoin(code: string, token: string) {
@@ -130,7 +154,11 @@ export class RoomManager {
     if (!member) throw new Error('Sitzung abgelaufen');
     if (this.isLeft(room, member.id)) throw new Error('Du wurdest aus dem Spiel genommen');
     this.setConnected(room.code, member.id, true);
-    return { code: room.code, playerId: member.id };
+    return {
+      code: room.code,
+      playerId: member.id,
+      role: (member.spectator ? 'spectator' : 'player') as 'player' | 'spectator',
+    };
   }
 
   start(code: string, playerId: string): void {
@@ -138,7 +166,7 @@ export class RoomManager {
     this.requireHost(room, playerId);
     if (room.game) throw new Error('Das Spiel läuft bereits');
     room.game = newGame(
-      room.members.map(({ id, name }) => ({ id, name })),
+      this.players(room).map(({ id, name }) => ({ id, name })),
       this.rng,
       room.target,
     );
@@ -147,7 +175,7 @@ export class RoomManager {
 
   nudge(code: string, playerId: string): { targetId: string; fromName: string } {
     const room = this.room(code);
-    const from = this.member(room, playerId);
+    const from = this.requirePlayer(room, playerId);
     const game = room.game;
     const turnPhase = game && ['draw', 'place', 'flipAfterDiscard'].includes(game.phase);
     if (!game || !turnPhase) throw new Error('Gerade nicht möglich');
@@ -173,7 +201,7 @@ export class RoomManager {
 
   act(code: string, playerId: string, action: unknown): void {
     const room = this.room(code);
-    this.member(room, playerId);
+    this.requirePlayer(room, playerId);
     if (!room.game) throw new Error('Das Spiel hat noch nicht begonnen');
     if (typeof action !== 'object' || action === null) throw new Error('Ungültige Aktion');
     room.game = apply(room.game, playerId, action as Action, this.rng);
@@ -192,12 +220,23 @@ export class RoomManager {
     const room = this.room(code);
     this.requireHost(room, playerId);
     if (room.game?.phase !== 'gameOver') throw new Error('Das Spiel läuft noch');
-    room.members = room.members.filter((m) => !this.isLeft(room, m.id));
-    room.game = newGame(
-      room.members.map(({ id, name }) => ({ id, name })),
+    const staying = this.players(room).filter((m) => !this.isLeft(room, m.id));
+    const promoted = room.members
+      .filter((m) => m.spectator && m.wantsToPlay)
+      .slice(0, Math.max(0, MAX_PLAYERS - staying.length));
+    const next = [...staying, ...promoted];
+    // Validates the player count (throws before anything is changed).
+    const game = newGame(
+      next.map(({ id, name }) => ({ id, name })),
       this.rng,
       room.target,
     );
+    for (const m of promoted) {
+      m.spectator = false;
+      m.wantsToPlay = false;
+    }
+    room.members = room.members.filter((m) => m.spectator || next.includes(m));
+    room.game = game;
     this.touch(room);
   }
 
@@ -205,31 +244,48 @@ export class RoomManager {
     const room = this.room(code);
     this.requireHost(room, playerId);
     if (targetId === playerId) throw new Error('Du kannst dich nicht selbst entfernen');
-    this.member(room, targetId);
-    if (room.game) room.game = removePlayer(room.game, targetId);
-    else room.members = room.members.filter((m) => m.id !== targetId);
+    const target = this.member(room, targetId);
+    if (target.spectator || !room.game) room.members = room.members.filter((m) => m.id !== targetId);
+    else room.game = removePlayer(room.game, targetId);
     this.touch(room);
   }
 
-  leave(code: string, playerId: string): void {
+  leave(code: string, playerId: string): { closedFor: string[] } {
     const room = this.room(code);
     const member = this.member(room, playerId);
+    if (member.spectator) {
+      room.members = room.members.filter((m) => m.id !== playerId);
+      this.touch(room);
+      return { closedFor: [] };
+    }
     if (room.game) {
       room.game = removePlayer(room.game, playerId);
       member.connected = false;
     } else {
       room.members = room.members.filter((m) => m.id !== playerId);
     }
-    const remaining = room.members.filter((m) => m.id !== playerId && !this.isLeft(room, m.id));
+    const remaining = this.players(room).filter((m) => m.id !== playerId && !this.isLeft(room, m.id));
     if (remaining.length === 0) {
+      const closedFor = room.members.filter((m) => m.spectator).map((m) => m.id);
       this.rooms.delete(room.code);
       this.onChange?.();
-      return;
+      return { closedFor };
     }
     if (room.hostId === playerId) {
       room.hostId = (remaining.find((m) => m.connected) ?? remaining[0]).id;
     }
     this.touch(room);
+    return { closedFor: [] };
+  }
+
+  requestPlay(code: string, playerId: string): boolean {
+    const room = this.room(code);
+    const member = this.member(room, playerId);
+    if (!member.spectator) throw new Error('Du spielst bereits mit');
+    if (room.game?.phase !== 'gameOver') throw new Error('Gerade nicht möglich');
+    member.wantsToPlay = !member.wantsToPlay;
+    this.touch(room);
+    return member.wantsToPlay;
   }
 
   setConnected(code: string, playerId: string, connected: boolean): void {
@@ -237,13 +293,13 @@ export class RoomManager {
     const member = room?.members.find((m) => m.id === playerId);
     if (!room || !member) return;
     member.connected = connected;
-    if (connected && !(room.hostGraceUntil && this.now() < room.hostGraceUntil)) {
+    if (connected && !member.spectator && !(room.hostGraceUntil && this.now() < room.hostGraceUntil)) {
       const host = room.members.find((m) => m.id === room.hostId);
       if (!host || !host.connected || this.isLeft(room, host.id)) room.hostId = playerId;
     }
     if (!connected && room.hostId === playerId) {
       const next = room.members.find(
-        (m) => m.connected && m.id !== playerId && !this.isLeft(room, m.id),
+        (m) => m.connected && m.id !== playerId && !m.spectator && !this.isLeft(room, m.id),
       );
       if (next) room.hostId = next.id;
     }
@@ -256,19 +312,23 @@ export class RoomManager {
 
   stateFor(code: string, playerId: string): ClientState {
     const room = this.room(code);
-    this.member(room, playerId);
+    const me = this.member(room, playerId);
     return {
       me: playerId,
+      role: me.spectator ? 'spectator' : 'player',
       room: {
         code: room.code,
         hostId: room.hostId,
         started: room.game !== null,
         target: room.target,
+        spectatorCount: room.members.filter((m) => m.spectator).length,
         members: room.members.map((m) => ({
           id: m.id,
           name: m.name,
           connected: m.connected,
           left: this.isLeft(room, m.id),
+          spectator: !!m.spectator,
+          wantsToPlay: !!m.wantsToPlay,
         })),
       },
       game: room.game ? viewFor(room.game, playerId) : null,

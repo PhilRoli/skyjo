@@ -66,6 +66,32 @@ describe('full game against the real server process', () => {
     bots.forEach(expectNoHiddenValueLeaked);
   });
 
+  it('lets a spectator watch a whole game and play the rematch', async () => {
+    const { host } = await setup(2);
+    expect((await host.request('game:start')).ok).toBe(true);
+
+    const spec = connectBot(server!.url, 'Zoe');
+    bots.push(spec);
+    const joined = await spec.request('room:join', { code: host.session!.code, name: 'Zoe' });
+    expect(joined.role).toBe('spectator');
+    spec.session = { code: joined.code, token: joined.token };
+
+    await waitFor(() => gameOver(host), 60_000, 'game over');
+    await waitFor(() => gameOver(spec), 5_000, 'spectator sees game over');
+    for (const st of spec.states) {
+      expect(st.role).toBe('spectator');
+      for (const p of st.game?.players ?? []) for (const c of p.grid) if (c && !c.up) expect(c.value).toBeNull();
+    }
+
+    expect((await spec.request('room:play')).wantsToPlay).toBe(true);
+    expect((await host.request('game:rematch')).ok).toBe(true);
+    await waitFor(() => spec.last()?.role === 'player', 5_000, 'spectator became a player');
+    expect(spec.last()!.game!.players.map((p) => p.name)).toContain('Zoe');
+
+    // The new game (now with 3 players) is played to the end by the bots.
+    await waitFor(() => gameOver(host) && host.last()!.game!.players.length === 3, 60_000, 'second game over');
+  });
+
   it('keeps a running game alive across a server restart', async () => {
     const { host, port, dataDir } = await setup(4);
     await host.request('game:start');

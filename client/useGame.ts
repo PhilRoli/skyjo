@@ -91,6 +91,7 @@ export function useGame() {
     create: (name: string) => run(() => enter('room:create', { name })),
     join: (code: string, name: string) => run(() => enter('room:join', { code, name })),
     setTarget: (target: number) => run(() => request('room:settings', { target })),
+    play: () => run(() => request('room:play')),
     start: () => run(() => request('game:start')),
     act: (action: Action) => run(() => request('game:action', action)),
     next: () => run(() => request('game:next')),

@@ -45,4 +45,13 @@ describe('viewFor', () => {
   it('exposes the target score', () => {
     expect(viewFor({ ...base(), target: 50 }, 'A').target).toBe(50);
   });
+
+  it('gives a non-player id the table without an own grid or the drawn card', () => {
+    const v = viewFor(base(), 'spectator-1');
+    expect(v.me).toBe('spectator-1');
+    expect(v.players.map((p) => p.id)).toEqual(['A', 'B']);
+    expect(v.drawn).toBeNull();
+    expect(v.drawnFrom).toBeNull();
+    expect(v.current).toBe('A');
+  });
 });
