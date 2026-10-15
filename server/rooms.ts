@@ -36,6 +36,7 @@ export class RoomManager {
   constructor(
     private rng: Rng = Math.random,
     private now: () => number = Date.now,
+    private maxRooms = 1000,
   ) {}
 
   private room(code: string): Room {
@@ -76,6 +77,7 @@ export class RoomManager {
   }
 
   create(name: string) {
+    if (this.rooms.size >= this.maxRooms) throw new Error('Server ausgelastet, bitte später erneut versuchen');
     const member = this.newMember(cleanName(name));
     const code = this.newCode();
     this.rooms.set(code, {
@@ -226,7 +228,8 @@ export class RoomManager {
   sweep(): number {
     let removed = 0;
     for (const [code, room] of this.rooms) {
-      if (this.now() - room.lastActivity > ROOM_TTL_MS) {
+      const idle = this.now() - room.lastActivity > ROOM_TTL_MS;
+      if (idle && !room.members.some((m) => m.connected)) {
         this.rooms.delete(code);
         removed++;
       }

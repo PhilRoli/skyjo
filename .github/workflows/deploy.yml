@@ -15,12 +15,14 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Releases müssen auf main basieren
-    if: github.event_name == 'workflow_dispatch' || github.event.release.target_commitish == 'main'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.event.release.tag_name || github.ref }}
+          fetch-depth: 0
+
+      - name: Require release commit on main
+        run: git merge-base --is-ancestor HEAD origin/main
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
 
