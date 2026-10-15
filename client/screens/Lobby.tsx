@@ -5,20 +5,24 @@ import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import { ALLOWED_TARGETS } from '../../shared/types';
 import type { ClientState } from '../../shared/view';
 
 interface Props {
   state: ClientState;
   onStart: () => void;
   onRemove: (id: string) => void;
+  onTarget: (target: number) => void;
   onLeave: () => void;
 }
 
-export function Lobby({ state, onStart, onRemove, onLeave }: Props) {
+export function Lobby({ state, onStart, onRemove, onTarget, onLeave }: Props) {
   const { room, me } = state;
   const isHost = room.hostId === me;
   const copyLink = () => {
@@ -50,6 +54,24 @@ export function Lobby({ state, onStart, onRemove, onLeave }: Props) {
           </ListItem>
         ))}
       </List>
+      <Stack spacing={1}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+          Ziel
+        </Typography>
+        <ToggleButtonGroup
+          exclusive
+          size="small"
+          value={room.target}
+          disabled={!isHost}
+          onChange={(_e, v: number | null) => v !== null && onTarget(v)}
+        >
+          {ALLOWED_TARGETS.map((t) => (
+            <ToggleButton key={t} value={t}>
+              {t}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+      </Stack>
       {isHost ? (
         <Button variant="contained" size="large" disabled={room.members.length < 2} onClick={onStart}>
           Spiel starten

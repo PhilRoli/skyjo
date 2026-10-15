@@ -133,6 +133,11 @@ export function createSkyjoServer(
       attach(r.code, r.playerId);
       return r;
     });
+    on('room:settings', ({ target }) => {
+      const s = session();
+      manager.setTarget(s.code, s.playerId, target);
+      broadcast(s.code);
+    });
     on('game:start', () => {
       const s = session();
       manager.start(s.code, s.playerId);

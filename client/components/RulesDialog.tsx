@@ -12,7 +12,7 @@ import { CardView } from './CardView';
 const SECTIONS: { title: string; items: string[] }[] = [
   {
     title: 'Ziel',
-    items: ['Am Ende möglichst wenig Punkte sammeln. Das Spiel endet, sobald jemand über 100 Punkte hat. Wer dann die wenigsten hat, gewinnt.'],
+    items: ['Am Ende möglichst wenig Punkte sammeln. Das Spiel endet, sobald jemand über dem Zielwert liegt (Standard 100, der Host kann 50 oder 150 wählen). Wer dann die wenigsten hat, gewinnt.'],
   },
   {
     title: 'Dein Zug',

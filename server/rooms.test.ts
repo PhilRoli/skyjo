@@ -259,3 +259,25 @@ describe('snapshot / restore', () => {
     expect(calls).toBeGreaterThan(afterCreate);
   });
 });
+
+describe('target score setting', () => {
+  it('lets only the host change it, only before the game, and only to allowed values', () => {
+    const { m, code, host, rest } = lobby(['Anna', 'Ben']);
+    expect(m.stateFor(code, host.playerId).room.target).toBe(100);
+    expect(() => m.setTarget(code, rest[0].playerId, 50)).toThrow('Nur der Host kann das');
+    expect(() => m.setTarget(code, host.playerId, 75)).toThrow('Ungültige Zielpunktzahl');
+    m.setTarget(code, host.playerId, 50);
+    expect(m.stateFor(code, rest[0].playerId).room.target).toBe(50);
+    m.start(code, host.playerId);
+    expect(m.stateFor(code, host.playerId).game?.target).toBe(50);
+    expect(() => m.setTarget(code, host.playerId, 150)).toThrow('Das Spiel läuft bereits');
+  });
+
+  it('survives a snapshot restore', () => {
+    const { m, code, host } = lobby(['Anna', 'Ben']);
+    m.setTarget(code, host.playerId, 150);
+    const m2 = mk();
+    m2.restore(JSON.parse(JSON.stringify(m.snapshot())));
+    expect(m2.stateFor(code, host.playerId).room.target).toBe(150);
+  });
+});

@@ -26,7 +26,7 @@ export function App() {
         {g.booting ? null : g.state === null ? (
           <Home initialCode={initialCode} onCreate={g.create} onJoin={g.join} />
         ) : g.state.game === null ? (
-          <Lobby state={g.state} onStart={g.start} onRemove={g.remove} onLeave={g.leave} />
+          <Lobby state={g.state} onStart={g.start} onRemove={g.remove} onTarget={g.setTarget} onLeave={g.leave} />
         ) : (
           <GameTable state={g.state} act={g.act} remove={g.remove} next={g.next} rematch={g.rematch} leave={g.leave} />
         )}

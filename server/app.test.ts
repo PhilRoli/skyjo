@@ -218,3 +218,13 @@ describe('per-IP limits', () => {
     expect((await d.request('room:create', { name: 'D' })).ok).toBe(true);
   });
 });
+
+describe('room settings', () => {
+  it('the host sets the target score and everyone sees it', async () => {
+    const { a, b } = await twoPlayers();
+    expect((await b.request('room:settings', { target: 50 })).error).toBe('Nur der Host kann das');
+    expect((await a.request('room:settings', { target: 50 })).ok).toBe(true);
+    const s = await b.until((x) => x.room.target === 50);
+    expect(s.room.target).toBe(50);
+  });
+});

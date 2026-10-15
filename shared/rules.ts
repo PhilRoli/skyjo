@@ -5,7 +5,7 @@ import {
   MAX_PLAYERS,
   MIN_PLAYERS,
   ROWS,
-  WIN_THRESHOLD,
+  DEFAULT_TARGET,
   type Action,
   type Cell,
   type GameEvent,
@@ -20,7 +20,11 @@ export const activePlayers = (state: GameState): PlayerState[] =>
 export const upCount = (player: PlayerState): number =>
   player.grid.filter((c) => c?.up).length;
 
-export function newGame(members: { id: string; name: string }[], rng: Rng): GameState {
+export function newGame(
+  members: { id: string; name: string }[],
+  rng: Rng,
+  target: number = DEFAULT_TARGET,
+): GameState {
   if (members.length < MIN_PLAYERS || members.length > MAX_PLAYERS) {
     throw new Error('2 bis 8 Spieler erforderlich');
   }
@@ -39,6 +43,7 @@ export function newGame(members: { id: string; name: string }[], rng: Rng): Game
     lastRound: null,
     events: [],
     eventSeq: 0,
+    target,
   };
   return startRound(state, rng);
 }
@@ -178,7 +183,7 @@ export function scoreRound(state: GameState): GameState {
   state.lastRound = { scores, doubled, finisher: state.finisher };
   state.drawn = null;
   state.drawnFrom = null;
-  state.phase = act.some((p) => p.total > WIN_THRESHOLD) ? 'gameOver' : 'roundOver';
+  state.phase = act.some((p) => p.total > state.target) ? 'gameOver' : 'roundOver';
   return state;
 }
 
