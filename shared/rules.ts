@@ -228,3 +228,37 @@ export function apply(prev: GameState, playerId: string, action: Action, rng: Rn
       throw new Error('Unbekannte Aktion');
   }
 }
+
+export function removePlayer(prev: GameState, playerId: string): GameState {
+  const state = structuredClone(prev);
+  const idx = state.players.findIndex((p) => p.id === playerId && !p.left);
+  if (idx < 0) return state;
+  const turnPhase = ['draw', 'place', 'flipAfterDiscard'].includes(state.phase);
+  const wasCurrent = turnPhase && state.current === idx;
+  state.players[idx].left = true;
+  state.pendingFinal = state.pendingFinal.filter((id) => id !== playerId);
+  if (activePlayers(state).length < 2) {
+    state.phase = 'gameOver';
+    state.drawn = null;
+    state.drawnFrom = null;
+    return state;
+  }
+  if (state.phase === 'roundOver' || state.phase === 'gameOver') return state;
+  if (state.phase === 'initialFlip') return maybeFinishInitial(state);
+  if (wasCurrent) {
+    if (state.drawn !== null) {
+      state.discard.push(state.drawn);
+      state.drawn = null;
+      state.drawnFrom = null;
+    }
+    return advance(state);
+  }
+  if (state.finisher !== null && state.pendingFinal.length === 0) return scoreRound(state);
+  return state;
+}
+
+export function winners(state: GameState): string[] {
+  const act = activePlayers(state);
+  const best = Math.min(...act.map((p) => p.total));
+  return act.filter((p) => p.total === best).map((p) => p.id);
+}

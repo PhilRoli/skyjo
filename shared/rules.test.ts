@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { apply, newGame, startRound } from './rules';
+import { apply, newGame, removePlayer, startRound, winners } from './rules';
 import type { Cell } from './types';
 import { ALL_HIDDEN, FILL, cells, mkState, seeded } from './testUtils';
 
@@ -259,5 +259,60 @@ describe('round end and scoring', () => {
     expect(s.players.every((p) => p.grid.length === 12 && p.grid.every((c) => c && !c.up))).toBe(true);
     expect(s.finisher).toBeNull();
     expect(() => startRound(mkState([cells(FILL), cells(FILL)]), rng)).toThrow('Runde läuft noch');
+  });
+});
+
+describe('removePlayer', () => {
+  const three = (extra = {}) => mkState([cells(FILL), cells(FILL), cells(FILL)], extra);
+
+  it('returns the held card to the discard pile and passes the turn', () => {
+    const s0 = three({ phase: 'place', drawn: 7, drawnFrom: 'deck', current: 0 });
+    const s = removePlayer(s0, 'A');
+    expect(s.players[0].left).toBe(true);
+    expect(s.drawn).toBeNull();
+    expect(s.discard.at(-1)).toBe(7);
+    expect(s.current).toBe(1);
+    expect(s.phase).toBe('draw');
+  });
+
+  it('skips removed players when advancing', () => {
+    let s = removePlayer(three({ current: 0 }), 'B');
+    s = apply(s, 'A', { type: 'drawFromDeck' }, rng);
+    s = apply(s, 'A', { type: 'swap', slot: 0 }, rng);
+    expect(s.current).toBe(2);
+  });
+
+  it('ends the game when fewer than 2 players remain', () => {
+    const s = removePlayer(mkState([cells(FILL), cells(FILL)]), 'B');
+    expect(s.phase).toBe('gameOver');
+    expect(winners(s)).toEqual(['A']);
+  });
+
+  it('scores the round if the removed player was the last one pending', () => {
+    const s0 = three({ current: 2, finisher: 'A', pendingFinal: ['C'] });
+    const s = removePlayer(s0, 'C');
+    expect(s.phase).toBe('roundOver');
+    expect(s.lastRound?.scores).toEqual({ A: 48, B: 24 });
+  });
+
+  it('starts the round once the remaining players finished flipping', () => {
+    const hidden = ALL_HIDDEN.slice(2);
+    const s0 = mkState(
+      [cells(FILL, hidden), cells(FILL, ALL_HIDDEN), cells([5, 5, ...FILL.slice(2)], hidden)],
+      { phase: 'initialFlip', initialDone: ['A', 'C'] },
+    );
+    const s = removePlayer(s0, 'B');
+    expect(s.phase).toBe('draw');
+    expect(s.current).toBe(2);
+  });
+});
+
+describe('winners', () => {
+  it('returns all active players with the lowest total', () => {
+    const s = mkState([cells(FILL), cells(FILL), cells(FILL)], { phase: 'gameOver' });
+    s.players[0].total = 50;
+    s.players[1].total = 50;
+    s.players[2].total = 120;
+    expect(winners(s)).toEqual(['A', 'B']);
   });
 });
