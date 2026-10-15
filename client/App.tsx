@@ -4,6 +4,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Snackbar from '@mui/material/Snackbar';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { GameTable } from './screens/GameTable';
+import { RulesButton } from './components/RulesDialog';
 import { VersionBadge } from './components/VersionBadge';
 import { Home } from './screens/Home';
 import { Lobby } from './screens/Lobby';
@@ -18,6 +19,9 @@ export function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Container maxWidth="md" sx={{ pb: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 8 }}>
+          <RulesButton />
+        </div>
         {!g.connected && !g.booting && <Alert severity="warning">Verbindung getrennt</Alert>}
         {g.booting ? null : g.state === null ? (
           <Home initialCode={initialCode} onCreate={g.create} onJoin={g.join} />

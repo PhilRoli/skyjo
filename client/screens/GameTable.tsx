@@ -1,8 +1,11 @@
+import { useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { describeEvents } from '../../shared/events';
+import { visibleSum } from '../../shared/score';
 import type { Action } from '../../shared/types';
 import type { ClientState } from '../../shared/view';
 import { CardView } from '../components/CardView';
@@ -27,6 +30,22 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
   const myUp = me.grid.filter((c) => c?.up).length;
   const nameOf = (id: string | null) => g.players.find((p) => p.id === id)?.name ?? '';
   const over = g.phase === 'roundOver' || g.phase === 'gameOver';
+  const eventLine = describeEvents(g.events, nameOf);
+  const clearedBy = (id: string) => g.events.filter((e) => e.kind === 'clear' && e.by === id).map((e) => (e as { column: number }).column);
+
+  // On phones the thumb sits at the bottom: keep the own cards (and the scoreboard) in view.
+  const endRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!window.matchMedia('(max-width: 899px)').matches) return;
+    endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  }, [myTurn, g.round, over]);
+
+  useEffect(() => {
+    document.title = myTurn ? '● Du bist dran – Skyjo' : 'Skyjo';
+    return () => {
+      document.title = 'Skyjo';
+    };
+  }, [myTurn]);
 
   let hint = '';
   let clickable: (i: number) => boolean = () => false;
@@ -62,9 +81,16 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
 
   return (
     <Stack spacing={2} sx={{ mt: 2 }}>
-      <Typography variant="h6" sx={{ fontWeight: 700 }}>
-        {over ? (g.phase === 'gameOver' ? 'Spiel beendet' : `Runde ${g.round} beendet`) : hint}
-      </Typography>
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: 'background.default', py: 1 }}>
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+          {over ? (g.phase === 'gameOver' ? 'Spiel beendet' : `Runde ${g.round} beendet`) : hint}
+        </Typography>
+        {eventLine && (
+          <Typography variant="body2" sx={{ opacity: 0.8 }}>
+            {eventLine}
+          </Typography>
+        )}
+      </Box>
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         {others.map((p) => {
@@ -73,11 +99,14 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
             <Paper key={p.id} sx={{ p: 1, outline: g.current === p.id ? '2px solid #ff9800' : 'none' }}>
               <Typography variant="body2" sx={{ fontWeight: 700 }}>
                 {p.name} · {p.total}
+                <Typography component="span" variant="caption" sx={{ ml: 0.5, opacity: 0.7 }}>
+                  (Runde {visibleSum(p.grid)})
+                </Typography>
               </Typography>
               {p.left ? (
                 <Typography variant="caption">ausgeschieden</Typography>
               ) : (
-                <GridView grid={p.grid} size="small" />
+                <GridView grid={p.grid} size="small" pulseColumns={clearedBy(p.id)} pulseKey={g.eventSeq} />
               )}
               {isHost && !p.left && member && !member.connected && (
                 <Button size="small" color="warning" onClick={() => remove(p.id)}>
@@ -123,11 +152,15 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
       <Paper sx={{ p: 2, outline: myTurn ? '2px solid #ff9800' : 'none', alignSelf: 'center' }}>
         <Typography sx={{ fontWeight: 700, mb: 1 }}>
           {me.name} · {me.total}
+          <Typography component="span" variant="caption" sx={{ ml: 0.5, opacity: 0.7 }}>
+            (Runde {visibleSum(me.grid)})
+          </Typography>
         </Typography>
-        <GridView grid={me.grid} canClick={clickable} onSlot={onSlot} />
+        <GridView grid={me.grid} canClick={clickable} onSlot={onSlot} pulseColumns={clearedBy(me.id)} pulseKey={g.eventSeq} />
       </Paper>
 
       {over && <Scoreboard game={g} isHost={isHost} next={next} rematch={rematch} leave={leave} />}
+      <div ref={endRef} />
     </Stack>
   );
 }
