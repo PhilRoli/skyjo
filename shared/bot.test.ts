@@ -218,3 +218,33 @@ describe('observe / unseen', () => {
     expect(DECK_AVERAGE).toBeCloseTo(5.07, 2);
   });
 });
+
+describe('hard', () => {
+  const memWith = (v: PlayerView) => {
+    const m = mem();
+    observe(m, v);
+    return m;
+  };
+
+  it('takes a discard that completes a column', () => {
+    const v = mkView([5, 5, 'h'], { discardTop: 5 });
+    expect(decide(v, 'hard', never, memWith(v))).toEqual({ type: 'takeDiscard' });
+  });
+
+  it('does not end the round as a clear loser (positive scores get doubled): it keeps a hidden card', () => {
+    // 11 known cards (sum 38) and one hidden card; the opponent shows only 4 points.
+    const mine: Spec[] = [3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 3, 'h'];
+    const theirs: Spec[] = [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1];
+    const v = mkView(mine, { phase: 'place', drawn: 2, drawnFrom: 'deck', deckCount: 40 }, theirs);
+    const hard = decide(v, 'hard', never, memWith(v)) as { type: string; slot: number };
+    expect(hard.type).toBe('swap');
+    expect(mine[hard.slot]).toBe(4); // replaces a known 4 instead of revealing the last card
+    const normal = decide(v, 'normal', never, mem());
+    expect(normal).toEqual({ type: 'swap', slot: 11 }); // normal happily ends the round
+  });
+
+  it('flips the hidden card in a column that already holds two equal cards', () => {
+    const v = mkView([1, 'h', 'h', 4, 4, 'h', 'h', 'h', 'h', 'h', 'h', 'h'], { phase: 'flipAfterDiscard' });
+    expect(decide(v, 'hard', never, memWith(v))).toEqual({ type: 'flipHidden', slot: 5 });
+  });
+});

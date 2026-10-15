@@ -205,8 +205,77 @@ const normalPolicy: Policy = {
   flip: (c) => bestFlip(c),
 };
 
-// Hard currently plays like Normal; Task 3 replaces this mapping with the counting policy.
-const POLICIES: Record<BotLevel, Policy> = { easy: easyPolicy, normal: normalPolicy, hard: normalPolicy };
+// ---------------------------------------------------------------- hard: counts cards
+
+const FLIP_VALUE = 0.3; // small value of seeing one more card
+const PENALTY_MARGIN = 0.5;
+
+const projected = (g: Grid, e: number) => g.reduce((s, cell) => s + estimate(cell, e), 0);
+
+function swapped(g: Grid, slot: number, v: number): Grid {
+  const next: Grid = g.map((cell, i) => (i === slot ? { up: true, value: v } : cell));
+  const slots = colSlots(col(slot));
+  if (slots.every((i) => next[i] && next[i]!.up && next[i]!.value === v)) for (const i of slots) next[i] = null;
+  return next;
+}
+
+function lowestOther(c: Ctx, e: number): number {
+  const scores = c.others.filter((p) => !p.left).map((p) => projected(p.grid, e));
+  return scores.length ? Math.min(...scores) : Infinity;
+}
+
+/** Ending the round without clearly having the lowest score doubles a positive score: count that as a cost. */
+function endPenalty(c: Ctx, mine: number, e: number): number {
+  if (c.view.finisher !== null) return 0;
+  return mine > 0 && mine >= lowestOther(c, e) - PENALTY_MARGIN ? mine : 0;
+}
+
+function hardBonus(info: Info): Bonus {
+  return (c, slot, v) => (pairShape(c.grid, slot, v) ? (info.counts[v] / Math.max(info.total, 1)) * 3 * v : 0);
+}
+
+function hardSwap(c: Ctx, v: number, info: Info): { slot: number; score: number } {
+  const bonus = hardBonus(info);
+  let best = { slot: c.live[0], score: -Infinity };
+  for (const slot of c.live) {
+    const after = swapped(c.grid, slot, v);
+    const finishing = hiddenSlots(after).length === 0;
+    const penalty = finishing ? endPenalty(c, projected(after, info.mean), info.mean) : 0;
+    const score = placeGain(c.grid, slot, v, info.mean) + bonus(c, slot, v) - penalty;
+    if (score > best.score) best = { slot, score };
+  }
+  return best;
+}
+
+/** Score of throwing the drawn deck card away and flipping a hidden card instead. */
+function hardDiscardScore(c: Ctx, info: Info): number {
+  const finishing = c.hidden.length === 1;
+  return FLIP_VALUE - (finishing ? endPenalty(c, projected(c.grid, info.mean), info.mean) : 0);
+}
+
+const hardPolicy: Policy = {
+  draw(c) {
+    const top = c.view.discardTop;
+    if (top === null) return { type: 'drawFromDeck' };
+    const info = unseen(c.view, c.mem);
+    const takeScore = hardSwap(c, top, info).score;
+    let deckScore = 0;
+    for (const v of CARD_VALUES) {
+      const p = info.counts[v] / Math.max(info.total, 1);
+      if (p > 0) deckScore += p * Math.max(hardSwap(c, v, info).score, hardDiscardScore(c, info));
+    }
+    return { type: takeScore >= deckScore ? 'takeDiscard' : 'drawFromDeck' };
+  },
+  place(c) {
+    const info = unseen(c.view, c.mem);
+    const best = hardSwap(c, c.view.drawn as number, info);
+    if (c.view.drawnFrom === 'discard') return { type: 'swap', slot: best.slot };
+    return best.score >= hardDiscardScore(c, info) ? { type: 'swap', slot: best.slot } : { type: 'discardDrawn' };
+  },
+  flip: (c) => bestFlip(c, unseen(c.view, c.mem)),
+};
+
+const POLICIES: Record<BotLevel, Policy> = { easy: easyPolicy, normal: normalPolicy, hard: hardPolicy };
 
 // ---------------------------------------------------------------- public API
 
