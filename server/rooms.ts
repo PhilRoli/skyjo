@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { apply, newGame, removePlayer, startRound } from '../shared/rules';
 import { ALLOWED_TARGETS, BOT_LEVELS, DEFAULT_TARGET, MAX_PLAYERS, type Action, type BotLevel, type GameState, type Rng } from '../shared/types';
-import { viewFor, type ClientState, type PlayerView } from '../shared/view';
+import { devViewFor, viewFor, type ClientState, type DevInfo, type PlayerView } from '../shared/view';
 
 const MAX_NAME = 16;
 const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
@@ -347,6 +347,11 @@ export class RoomManager {
 
   memberIds(code: string): string[] {
     return this.rooms.get(normalizeCode(code))?.members.map((m) => m.id) ?? [];
+  }
+
+  devInfo(code: string): DevInfo | undefined {
+    const game = this.room(code).game;
+    return game ? devViewFor(game) : undefined;
   }
 
   stateFor(code: string, playerId: string): ClientState {

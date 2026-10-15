@@ -42,7 +42,7 @@ export function App() {
           <GameTable state={g.state} act={g.act} remove={g.remove} nudge={g.nudge} next={g.next} rematch={g.rematch} play={g.play} leave={g.leave} />
         )}
       </Container>
-      <VersionBadge />
+      <VersionBadge devAllowed={!!g.state?.devAllowed} devOn={!!g.state?.dev} onToggleDev={g.setDev} />
       <Snackbar open={g.nudgedBy !== null} autoHideDuration={5000} onClose={g.clearNudge}>
         <Alert severity="info" onClose={g.clearNudge}>
           {g.nudgedBy} stupst dich an

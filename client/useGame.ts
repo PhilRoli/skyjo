@@ -91,6 +91,7 @@ export function useGame() {
     create: (name: string) => run(() => enter('room:create', { name })),
     join: (code: string, name: string) => run(() => enter('room:join', { code, name })),
     setTarget: (target: number) => run(() => request('room:settings', { target })),
+    setDev: (on: boolean) => run(() => request('dev:set', { on })),
     play: () => run(() => request('room:play')),
     addBot: (level: BotLevel) => run(() => request('room:addBot', { level })),
     start: () => run(() => request('game:start')),

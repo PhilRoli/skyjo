@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { viewFor } from './view';
+import { devViewFor, viewFor } from './view';
 import { ALL_HIDDEN, FILL, cells, mkState } from './testUtils';
 
 describe('viewFor', () => {
@@ -53,5 +53,20 @@ describe('viewFor', () => {
     expect(v.drawn).toBeNull();
     expect(v.drawnFrom).toBeNull();
     expect(v.current).toBe('A');
+  });
+});
+
+describe('devViewFor', () => {
+  it('reveals hidden cards, the drawn card and deck counts', () => {
+    const state = mkState([cells(FILL, ALL_HIDDEN), cells(FILL)], { deck: [4, 4, 7, -2], drawn: 5, drawnFrom: 'deck', phase: 'place' });
+    const dev = devViewFor(state);
+    expect(dev.grids.A).toEqual(FILL);
+    expect(dev.drawn).toBe(5);
+    expect(dev.next).toBe(-2);
+    expect(dev.deck).toEqual([
+      { value: -2, count: 1 },
+      { value: 4, count: 2 },
+      { value: 7, count: 1 },
+    ]);
   });
 });

@@ -7,6 +7,14 @@ export interface ReleaseNote {
 /** Newest first. Shown in the app when clicking the version. */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.5.0',
+    title: 'Letzte Runde',
+    items: [
+      'Wer die letzte verdeckte Karte aufdecken und damit zudrehen will, muss das bestätigen.',
+      'In der letzten Runde pulsiert ein roter Rand um den Bildschirm, die Anzeige oben ist rot.',
+    ],
+  },
+  {
     version: '1.4.0',
     title: 'Rundenverlauf',
     items: [

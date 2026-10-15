@@ -66,6 +66,32 @@ async function twoPlayers() {
   return { a, b, created, joined };
 }
 
+describe('dev mode', () => {
+  it('is refused and leaks nothing without DEV_MODE', async () => {
+    const { a } = await twoPlayers();
+    const res = await a.request('dev:set', { on: true });
+    expect(res.ok).toBe(false);
+    await a.request('game:start');
+    const s = await a.until((x) => x.game !== null);
+    expect(s.dev).toBeUndefined();
+    expect(s.devAllowed).toBeUndefined();
+  });
+
+  it('sends dev info only to the player who opted in', async () => {
+    server.io.close();
+    server = createSkyjoServer({ manager: new RoomManager(seeded(7)), botDelayMs: 0, devMode: true });
+    await new Promise<void>((r) => server.httpServer.listen(0, r));
+    url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
+    const { a, b } = await twoPlayers();
+    await a.request('game:start');
+    await a.request('dev:set', { on: true });
+    const sa = await a.until((x) => !!x.dev);
+    const sb = await b.until((x) => x.game !== null && x.devAllowed === true);
+    expect(sa.dev!.grids[sa.me]).toHaveLength(12);
+    expect(sb.dev).toBeUndefined();
+  });
+});
+
 describe('socket server', () => {
   it('serves a health check', async () => {
     const res = await fetch(`${url}/healthz`);
