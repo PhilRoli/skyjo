@@ -80,9 +80,9 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
     };
   }, [myTurn]);
 
-  /** Revealing the very last hidden card ends the round for everyone else, so ask first. */
+  /** Only the first player to reveal their last hidden card closes the round, so only they are asked. */
   const hiddenCount = me ? me.grid.filter((c) => c !== null && !c.up).length : 0;
-  const closes = (slot: number) => hiddenCount === 1 && !!me && me.grid[slot] !== null && !me.grid[slot]!.up;
+  const closes = (slot: number) => !g.finisher && hiddenCount === 1 && !!me && me.grid[slot] !== null && !me.grid[slot]!.up;
   const closeOrAct = (a: Extract<Action, { slot: number }>) => (closes(a.slot) ? setPendingClose(a) : act(a));
   const lastRound = !!g.finisher && !over;
 
