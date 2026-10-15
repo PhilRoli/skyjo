@@ -19,12 +19,13 @@ describe('release notes', () => {
   });
 
   it('has the spectator and bot release as 1.3.0 below 1.3.1 and everything before it as 1.2.0', () => {
-    expect(RELEASE_NOTES[0].version).toBe('1.5.0');
-    expect(RELEASE_NOTES[1].version).toBe('1.4.0');
-    expect(RELEASE_NOTES[2].version).toBe('1.3.1');
-    expect(RELEASE_NOTES[3].version).toBe('1.3.0');
-    expect(RELEASE_NOTES[3].items.join(' ')).toMatch(/Zuschauer/);
-    expect(RELEASE_NOTES[3].items.join(' ')).toMatch(/Bot/);
-    expect(RELEASE_NOTES[4].version).toBe('1.2.0');
+    expect(RELEASE_NOTES[0].version).toBe('1.5.1');
+    expect(RELEASE_NOTES[1].version).toBe('1.5.0');
+    expect(RELEASE_NOTES[2].version).toBe('1.4.0');
+    expect(RELEASE_NOTES[3].version).toBe('1.3.1');
+    expect(RELEASE_NOTES[4].version).toBe('1.3.0');
+    expect(RELEASE_NOTES[4].items.join(' ')).toMatch(/Zuschauer/);
+    expect(RELEASE_NOTES[4].items.join(' ')).toMatch(/Bot/);
+    expect(RELEASE_NOTES[5].version).toBe('1.2.0');
   });
 });
