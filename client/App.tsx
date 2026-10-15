@@ -3,6 +3,7 @@ import Container from '@mui/material/Container';
 import CssBaseline from '@mui/material/CssBaseline';
 import Snackbar from '@mui/material/Snackbar';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { GameTable } from './screens/GameTable';
 import { Home } from './screens/Home';
 import { Lobby } from './screens/Lobby';
 import { useGame } from './useGame';
@@ -22,7 +23,7 @@ export function App() {
         ) : g.state.game === null ? (
           <Lobby state={g.state} onStart={g.start} onRemove={g.remove} onLeave={g.leave} />
         ) : (
-          <div>Spiel läuft</div>
+          <GameTable state={g.state} act={g.act} remove={g.remove} next={g.next} rematch={g.rematch} leave={g.leave} />
         )}
       </Container>
       <Snackbar open={g.error !== null} autoHideDuration={4000} onClose={g.clearError}>
