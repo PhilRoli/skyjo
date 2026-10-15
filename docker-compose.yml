@@ -1,0 +1,6 @@
+services:
+  web:
+    build: .
+    ports:
+      - "127.0.0.1:4300:4300"
+    restart: unless-stopped
