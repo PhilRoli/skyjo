@@ -98,9 +98,8 @@ describe('socket server', () => {
     const { a, created } = await twoPlayers();
     await a.request('game:start');
     const late = client();
-    expect((await late.request('room:join', { code: created.code, name: 'Cara' })).error).toBe(
-      'Das Spiel läuft bereits',
-    );
+    const joinedLate = await late.request('room:join', { code: created.code, name: 'Cara' });
+    expect(joinedLate.role).toBe('spectator');
     expect((await a.request('game:action', { type: 'drawFromDeck' })).ok).toBe(false);
     expect((await a.request('game:action', {})).error).toBe('Unbekannte Aktion');
     const stranger = client();

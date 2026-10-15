@@ -29,11 +29,20 @@ export interface RoomInfo {
   hostId: string;
   started: boolean;
   target: number;
-  members: { id: string; name: string; connected: boolean; left: boolean }[];
+  spectatorCount: number;
+  members: {
+    id: string;
+    name: string;
+    connected: boolean;
+    left: boolean;
+    spectator: boolean;
+    wantsToPlay: boolean;
+  }[];
 }
 
 export interface ClientState {
   me: string;
+  role: 'player' | 'spectator';
   room: RoomInfo;
   game: PlayerView | null;
 }
