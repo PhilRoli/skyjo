@@ -10,9 +10,11 @@ interface Props {
   /** Columns whose removal just happened; `pulseKey` restarts the animation for each new event. */
   pulseColumns?: number[];
   pulseKey?: number;
+  /** Dev mode: real values per slot. */
+  peek?: (number | null)[];
 }
 
-export function GridView({ grid, size = 'normal', canClick, onSlot, pulseColumns = [], pulseKey = 0 }: Props) {
+export function GridView({ grid, size = 'normal', canClick, onSlot, pulseColumns = [], pulseKey = 0, peek }: Props) {
   return (
     <Box
       sx={{
@@ -31,6 +33,7 @@ export function GridView({ grid, size = 'normal', canClick, onSlot, pulseColumns
             key={pulse ? `${i}-${pulseKey}` : i}
             pulse={pulse}
             cell={cell}
+            peek={peek?.[i]}
             size={size}
             highlight={clickable}
             onClick={clickable ? () => onSlot?.(i) : undefined}

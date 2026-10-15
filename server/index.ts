@@ -6,6 +6,7 @@ const port = Number(process.env.PORT ?? 4400);
 const { httpServer, io, manager, runner } = createSkyjoServer({
   staticDir: path.resolve('client/dist'),
   botDelayMs: Number(process.env.BOT_DELAY_MS ?? 900),
+  devMode: process.env.DEV_MODE === '1',
 });
 
 const persistence = createPersistence(manager, path.resolve(process.env.DATA_DIR ?? 'data', 'rooms.json'));

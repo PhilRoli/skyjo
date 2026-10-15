@@ -41,11 +41,21 @@ export interface RoomInfo {
   }[];
 }
 
+/** Debug-only: everything the server knows. Only sent when the server runs with DEV_MODE and the player opted in. */
+export interface DevInfo {
+  grids: Record<string, (number | null)[]>;
+  drawn: number | null;
+  /** Cards left in the draw pile as value counts (no order, so the next card stays unknown). */
+  deck: { value: number; count: number }[];
+}
+
 export interface ClientState {
   me: string;
   role: 'player' | 'spectator';
   room: RoomInfo;
   game: PlayerView | null;
+  devAllowed?: boolean;
+  dev?: DevInfo;
 }
 
 export function viewFor(state: GameState, me: string): PlayerView {
@@ -75,5 +85,15 @@ export function viewFor(state: GameState, me: string): PlayerView {
     events: state.events,
     eventSeq: state.eventSeq,
     target: state.target,
+  };
+}
+
+export function devViewFor(state: GameState): DevInfo {
+  const counts = new Map<number, number>();
+  for (const v of state.deck) counts.set(v, (counts.get(v) ?? 0) + 1);
+  return {
+    grids: Object.fromEntries(state.players.map((p) => [p.id, p.grid.map((c) => (c ? c.value : null))])),
+    drawn: state.drawn,
+    deck: [...counts].map(([value, count]) => ({ value, count })).sort((a, b) => a.value - b.value),
   };
 }
