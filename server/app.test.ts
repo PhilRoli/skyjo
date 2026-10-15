@@ -16,7 +16,7 @@ const sockets: Socket[] = [];
 const serverOpts: { maxSocketsPerIp?: number } = {};
 
 beforeEach(async () => {
-  server = createSkyjoServer({ manager: new RoomManager(seeded(7)), ...serverOpts });
+  server = createSkyjoServer({ manager: new RoomManager(seeded(7)), botDelayMs: 0, ...serverOpts });
   await new Promise<void>((r) => server.httpServer.listen(0, r));
   url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
 });
@@ -205,7 +205,7 @@ describe('per-IP limits', () => {
   it('disconnects sockets beyond the per-IP maximum and frees slots on disconnect', async () => {
     await new Promise<void>((r) => server.io.close(() => r()));
     serverOpts.maxSocketsPerIp = 2;
-    server = createSkyjoServer({ manager: new RoomManager(seeded(7)), ...serverOpts });
+    server = createSkyjoServer({ manager: new RoomManager(seeded(7)), botDelayMs: 0, ...serverOpts });
     await new Promise<void>((r) => server.httpServer.listen(0, r));
     url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
     const a = client();
@@ -256,7 +256,7 @@ describe('static files', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'skyjo-static-'));
     writeFileSync(path.join(dir, 'index.html'), '<title>Skyjo</title>');
     writeFileSync(path.join(dir, 'manifest.webmanifest'), '{"name":"Skyjo"}');
-    server = createSkyjoServer({ manager: new RoomManager(seeded(7)), staticDir: dir });
+    server = createSkyjoServer({ manager: new RoomManager(seeded(7)), botDelayMs: 0, staticDir: dir });
     await new Promise<void>((r) => server.httpServer.listen(0, r));
     url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
     const manifest = await fetch(`${url}/manifest.webmanifest`);
@@ -308,5 +308,49 @@ describe('spectators over sockets', () => {
     await b.request('room:leave');
     await a.request('room:leave');
     await kicked;
+  });
+});
+
+describe('bots over sockets', () => {
+  it('only the host adds bots with a valid level', async () => {
+    const { a, b } = await twoPlayers();
+    expect((await b.request('room:addBot', { level: 'easy' })).error).toBe('Nur der Host kann das');
+    expect((await a.request('room:addBot', { level: 'godlike' })).error).toBe('Ungültige Bot-Stufe');
+    const ok = await a.request('room:addBot', { level: 'hard' });
+    expect(ok.ok).toBe(true);
+    expect(ok.id).toMatch(/^bot-/);
+    const s = await b.until((x) => x.room.members.some((m) => m.bot));
+    expect(s.room.members.find((m) => m.bot)?.bot).toEqual({ level: 'hard' });
+  });
+
+  it('bots flip their initial cards and take their turns on their own', async () => {
+    const a = client();
+    await a.request('room:create', { name: 'Anna' });
+    const added = await a.request('room:addBot', { level: 'normal' });
+    expect((await a.request('game:start')).ok).toBe(true);
+    const flipped = await a.until((s) => {
+      const bot = s.game?.players.find((p) => p.id === added.id);
+      return (bot?.grid.filter((c) => c?.up).length ?? 0) >= 2;
+    });
+    expect(flipped.game?.players).toHaveLength(2);
+    await a.request('game:action', { type: 'flipInitial', slot: 0 });
+    await a.request('game:action', { type: 'flipInitial', slot: 1 });
+    await a.until((s) => s.game?.phase === 'draw' || s.game?.phase === 'place');
+    // whoever starts: after the human finished a turn the bot moves without any client request
+    let guard = 0;
+    for (;;) {
+      const s = a.state!.game!;
+      if (s.current === a.state!.me && s.phase === 'draw') {
+        await a.request('game:action', { type: 'drawFromDeck' });
+        await a.request('game:action', { type: 'discardDrawn' });
+        await a.request('game:action', {
+          type: 'flipHidden',
+          slot: s.players.find((p) => p.id === s.me)!.grid.findIndex((c) => c && !c.up),
+        });
+      }
+      if (a.state!.game!.events.some((e) => e.by === added.id)) break;
+      if (++guard > 200) throw new Error('the bot never moved');
+      await new Promise((r) => setTimeout(r, 15));
+    }
   });
 });

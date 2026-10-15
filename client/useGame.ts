@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Action } from '../shared/types';
+import type { Action, BotLevel } from '../shared/types';
 import type { ClientState } from '../shared/view';
 import { loadSession, request, saveSession, socket } from './socket';
 
@@ -92,6 +92,7 @@ export function useGame() {
     join: (code: string, name: string) => run(() => enter('room:join', { code, name })),
     setTarget: (target: number) => run(() => request('room:settings', { target })),
     play: () => run(() => request('room:play')),
+    addBot: (level: BotLevel) => run(() => request('room:addBot', { level })),
     start: () => run(() => request('game:start')),
     act: (action: Action) => run(() => request('game:action', action)),
     next: () => run(() => request('game:next')),

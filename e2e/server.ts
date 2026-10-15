@@ -23,7 +23,7 @@ export interface RunningServer {
 /** Starts the real server (bun server/index.ts) as a child process. */
 export async function startServer(port: number, dataDir: string): Promise<RunningServer> {
   const child: ChildProcess = spawn('bun', ['server/index.ts'], {
-    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir },
+    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, BOT_DELAY_MS: '10' },
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   await new Promise<void>((resolve, reject) => {

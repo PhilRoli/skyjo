@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import path from 'node:path';
 import express from 'express';
 import { Server, type Socket } from 'socket.io';
+import { BotRunner } from './bots';
 import { RoomManager } from './rooms';
 
 type Ack = (res: { ok: true; [k: string]: unknown } | { ok: false; error: string }) => void;
@@ -13,7 +14,7 @@ const CREATE_LIMIT = 5;
 const CREATE_WINDOW_MS = 60_000;
 
 export function createSkyjoServer(
-  opts: { manager?: RoomManager; staticDir?: string; maxSocketsPerIp?: number } = {},
+  opts: { manager?: RoomManager; staticDir?: string; maxSocketsPerIp?: number; botDelayMs?: number } = {},
 ) {
   const maxSocketsPerIp = opts.maxSocketsPerIp ?? MAX_SOCKETS_PER_IP;
   const manager = opts.manager ?? new RoomManager();
@@ -37,6 +38,11 @@ export function createSkyjoServer(
       io.to(personal(code, id)).emit('state', manager.stateFor(code, id));
     }
   };
+
+  // Bots act through the manager, not through a socket handler: push their moves to the clients here.
+  const runner = new BotRunner(manager, { delayMs: opts.botDelayMs, onActed: broadcast });
+  manager.onRoomChange = (code) => runner.notify(code);
+  httpServer.on('close', () => runner.dispose());
 
   // Behind Caddy the first X-Forwarded-For entry is the real client; the app port is bound to localhost only.
   const clientIp = (socket: Socket): string => {
@@ -144,6 +150,12 @@ export function createSkyjoServer(
       broadcast(s.code);
       return { wantsToPlay };
     });
+    on('room:addBot', ({ level }) => {
+      const s = session();
+      const id = manager.addBot(s.code, s.playerId, level);
+      broadcast(s.code);
+      return { id };
+    });
     on('game:start', () => {
       const s = session();
       manager.start(s.code, s.playerId);
@@ -198,5 +210,5 @@ export function createSkyjoServer(
     });
   });
 
-  return { httpServer, io, manager };
+  return { httpServer, io, manager, runner };
 }
