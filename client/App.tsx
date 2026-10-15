@@ -28,10 +28,15 @@ export function App() {
         ) : g.state.game === null ? (
           <Lobby state={g.state} onStart={g.start} onRemove={g.remove} onTarget={g.setTarget} onLeave={g.leave} />
         ) : (
-          <GameTable state={g.state} act={g.act} remove={g.remove} next={g.next} rematch={g.rematch} leave={g.leave} />
+          <GameTable state={g.state} act={g.act} remove={g.remove} nudge={g.nudge} next={g.next} rematch={g.rematch} leave={g.leave} />
         )}
       </Container>
       <VersionBadge />
+      <Snackbar open={g.nudgedBy !== null} autoHideDuration={5000} onClose={g.clearNudge}>
+        <Alert severity="info" onClose={g.clearNudge}>
+          {g.nudgedBy} stupst dich an
+        </Alert>
+      </Snackbar>
       <Snackbar open={g.error !== null} autoHideDuration={4000} onClose={g.clearError}>
         <Alert severity="error" onClose={g.clearError}>
           {g.error}

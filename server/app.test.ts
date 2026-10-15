@@ -228,3 +228,22 @@ describe('room settings', () => {
     expect(s.room.target).toBe(50);
   });
 });
+
+describe('nudge over sockets', () => {
+  it('delivers a nudged event with the sender name to the player whose turn it is', async () => {
+    const { a, b, joined, created } = await twoPlayers();
+    await a.request('game:start');
+    for (const c of [a, b]) {
+      await c.request('game:action', { type: 'flipInitial', slot: 0 });
+      await c.request('game:action', { type: 'flipInitial', slot: 1 });
+    }
+    const s = await a.until((x) => x.game?.phase === 'draw');
+    const aIsCurrent = s.game!.current === created.playerId;
+    const [current, other, otherName] = aIsCurrent ? [a, b, 'Ben'] : [b, a, 'Anna'];
+    const got = new Promise<{ from: string }>((resolve) => current.socket.once('nudged', resolve));
+    expect((await other.request('game:nudge')).ok).toBe(true);
+    expect((await got).from).toBe(otherName);
+    expect((await current.request('game:nudge')).error).toBe('Du bist selbst dran');
+    expect(joined.playerId).toBeTruthy();
+  });
+});

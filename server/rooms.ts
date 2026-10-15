@@ -6,6 +6,7 @@ import { viewFor, type ClientState } from '../shared/view';
 const MAX_NAME = 16;
 const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
 const HOST_GRACE_MS = 30_000;
+const NUDGE_COOLDOWN_MS = 10_000;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 interface Member {
@@ -24,6 +25,8 @@ interface Room {
   lastActivity: number;
   /** Not persisted: after a restart the original host gets a moment to return before the role moves. */
   hostGraceUntil?: number;
+  /** Not persisted: limits nudging to once per cooldown for the whole room. */
+  lastNudgeAt?: number;
 }
 
 export interface RoomSnapshot {
@@ -140,6 +143,21 @@ export class RoomManager {
       room.target,
     );
     this.touch(room);
+  }
+
+  nudge(code: string, playerId: string): { targetId: string; fromName: string } {
+    const room = this.room(code);
+    const from = this.member(room, playerId);
+    const game = room.game;
+    const turnPhase = game && ['draw', 'place', 'flipAfterDiscard'].includes(game.phase);
+    if (!game || !turnPhase) throw new Error('Gerade nicht möglich');
+    const target = game.players[game.current];
+    if (target.id === playerId) throw new Error('Du bist selbst dran');
+    if (room.lastNudgeAt !== undefined && this.now() - room.lastNudgeAt < NUDGE_COOLDOWN_MS) {
+      throw new Error('Bitte kurz warten');
+    }
+    room.lastNudgeAt = this.now();
+    return { targetId: target.id, fromName: from.name };
   }
 
   setTarget(code: string, playerId: string, target: unknown): void {

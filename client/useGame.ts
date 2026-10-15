@@ -8,6 +8,7 @@ export function useGame() {
   const [connected, setConnected] = useState(socket.connected);
   const [booting, setBooting] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [nudgedBy, setNudgedBy] = useState<string | null>(null);
 
   useEffect(() => {
     const rejoin = async () => {
@@ -31,6 +32,19 @@ export function useGame() {
     };
     const onDisconnect = () => setConnected(false);
     const onState = (s: ClientState) => setState(s);
+    const onNudged = ({ from }: { from: string }) => {
+      setNudgedBy(from);
+      navigator.vibrate?.(200);
+      const base = document.title;
+      let n = 0;
+      const id = setInterval(() => {
+        document.title = n % 2 === 0 ? `👉 ${from} stupst dich an` : base;
+        if (++n >= 10) {
+          clearInterval(id);
+          document.title = base;
+        }
+      }, 800);
+    };
     const onKicked = () => {
       saveSession(null);
       setState(null);
@@ -40,12 +54,14 @@ export function useGame() {
     socket.on('disconnect', onDisconnect);
     socket.on('state', onState);
     socket.on('kicked', onKicked);
+    socket.on('nudged', onNudged);
     if (socket.connected) onConnect();
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('state', onState);
       socket.off('kicked', onKicked);
+      socket.off('nudged', onNudged);
     };
   }, []);
 
@@ -69,6 +85,9 @@ export function useGame() {
     booting,
     error,
     clearError: () => setError(null),
+    nudgedBy,
+    clearNudge: () => setNudgedBy(null),
+    nudge: () => run(() => request('game:nudge')),
     create: (name: string) => run(() => enter('room:create', { name })),
     join: (code: string, name: string) => run(() => enter('room:join', { code, name })),
     setTarget: (target: number) => run(() => request('room:settings', { target })),
