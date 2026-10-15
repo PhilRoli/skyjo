@@ -92,6 +92,28 @@ describe('full game against the real server process', () => {
     await waitFor(() => gameOver(host) && host.last()!.game!.players.length === 3, 60_000, 'second game over');
   });
 
+  it('plays a full game against server bots, also across a restart', async () => {
+    const { host, port, dataDir } = await setup(1);
+    expect((await host.request('room:addBot', { level: 'normal' })).ok).toBe(true);
+    expect((await host.request('room:addBot', { level: 'hard' })).ok).toBe(true);
+    expect((await host.request('game:start')).ok).toBe(true);
+
+    await waitFor(() => (host.last()?.game?.eventSeq ?? 0) >= 12, 30_000, 'some turns');
+    expect(host.last()!.game!.phase).not.toBe('gameOver');
+
+    await server!.stop();
+    server = await startServer(port, dataDir);
+    await waitFor(() => host.last()?.room.members.find((m) => !m.bot)?.connected, 20_000, 'host reconnected');
+    await waitFor(() => gameOver(host), 60_000, 'game over after the restart');
+
+    const botIds = host.last()!.room.members.filter((m) => m.bot).map((m) => m.id);
+    expect(botIds).toHaveLength(2);
+    expect(host.states.some((s) => s.game?.events.some((e) => botIds.includes(e.by)))).toBe(true);
+    expect(host.last()!.game!.players).toHaveLength(3);
+    expect(host.last()!.game!.winners.length).toBeGreaterThan(0);
+    bots.forEach(expectNoHiddenValueLeaked);
+  });
+
   it('keeps a running game alive across a server restart', async () => {
     const { host, port, dataDir } = await setup(4);
     await host.request('game:start');
