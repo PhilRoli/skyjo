@@ -9,11 +9,13 @@ import { VersionBadge } from './components/VersionBadge';
 import { Home } from './screens/Home';
 import { Lobby } from './screens/Lobby';
 import { useGame } from './useGame';
+import { useWakeLock } from './useWakeLock';
 
 const theme = createTheme({ palette: { mode: 'dark' } });
 
 export function App() {
   const g = useGame();
+  useWakeLock(g.state?.game != null);
   const initialCode = new URLSearchParams(location.search).get('raum')?.toUpperCase() ?? '';
   return (
     <ThemeProvider theme={theme}>

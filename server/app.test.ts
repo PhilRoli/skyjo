@@ -1,4 +1,7 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { io as connect, type Socket } from 'socket.io-client';
 import { createSkyjoServer } from './app';
@@ -245,5 +248,20 @@ describe('nudge over sockets', () => {
     expect((await got).from).toBe(otherName);
     expect((await current.request('game:nudge')).error).toBe('Du bist selbst dran');
     expect(joined.playerId).toBeTruthy();
+  });
+});
+
+describe('static files', () => {
+  it('serves the manifest with the right type and falls back to index.html for unknown paths', async () => {
+    await new Promise<void>((r) => server.io.close(() => r()));
+    const dir = mkdtempSync(path.join(tmpdir(), 'skyjo-static-'));
+    writeFileSync(path.join(dir, 'index.html'), '<title>Skyjo</title>');
+    writeFileSync(path.join(dir, 'manifest.webmanifest'), '{"name":"Skyjo"}');
+    server = createSkyjoServer({ manager: new RoomManager(seeded(7)), staticDir: dir });
+    await new Promise<void>((r) => server.httpServer.listen(0, r));
+    url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
+    const manifest = await fetch(`${url}/manifest.webmanifest`);
+    expect(manifest.headers.get('content-type')).toContain('manifest+json');
+    expect(await (await fetch(`${url}/some/room/path`)).text()).toBe('<title>Skyjo</title>');
   });
 });
