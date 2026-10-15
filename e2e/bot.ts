@@ -41,7 +41,8 @@ export function connectBot(url: string, name: string): Bot {
     const st = bot.last();
     if (!st?.game) return false;
     const g = st.game;
-    const me = g.players.find((p) => p.id === g.me)!;
+    const me = g.players.find((p) => p.id === g.me);
+    if (!me) return false; // spectator: just watch
     const hidden = me.grid.flatMap((c, i) => (c && !c.up ? [i] : []));
     const up = me.grid.filter((c) => c?.up).length;
     const act = (a: object) => bot.request('game:action', a);
