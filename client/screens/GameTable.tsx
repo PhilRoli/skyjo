@@ -4,6 +4,7 @@ import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { describeEvents } from '../../shared/events';
 import { visibleSum } from '../../shared/score';
 import type { Action } from '../../shared/types';
@@ -19,20 +20,22 @@ interface Props {
   nudge: () => void;
   next: () => void;
   rematch: () => void;
+  play: () => void;
   leave: () => void;
 }
 
-export function GameTable({ state, act, remove, nudge, next, rematch, leave }: Props) {
+export function GameTable({ state, act, remove, nudge, next, rematch, play, leave }: Props) {
   const g = state.game!;
   const isHost = state.room.hostId === state.me;
-  const me = g.players.find((p) => p.id === g.me)!;
+  const spectator = state.role === 'spectator';
+  const me = g.players.find((p) => p.id === g.me); // undefined for spectators
   const others = g.players.filter((p) => p.id !== g.me);
-  const myTurn = g.current === g.me;
-  const myUp = me.grid.filter((c) => c?.up).length;
+  const myTurn = !spectator && g.current === g.me;
+  const myUp = me ? me.grid.filter((c) => c?.up).length : 2;
   const nameOf = (id: string | null) => g.players.find((p) => p.id === id)?.name ?? '';
   const over = g.phase === 'roundOver' || g.phase === 'gameOver';
   const [nudgeCooling, setNudgeCooling] = useState(false);
-  const canNudge = !myTurn && g.current !== null && !over;
+  const canNudge = !spectator && !myTurn && g.current !== null && !over;
   const nudgeNow = () => {
     nudge();
     setNudgeCooling(true);
@@ -58,7 +61,7 @@ export function GameTable({ state, act, remove, nudge, next, rematch, leave }: P
   let hint = '';
   let clickable: (i: number) => boolean = () => false;
   let onSlot: (i: number) => void = () => {};
-  const hidden = (i: number) => me.grid[i] !== null && !me.grid[i]!.up;
+  const hidden = (i: number) => !!me && me.grid[i] !== null && !me.grid[i]!.up;
   switch (g.phase) {
     case 'initialFlip':
       hint = myUp < 2 ? `Decke 2 Karten auf (${myUp}/2)` : 'Warte auf die anderen';
@@ -74,7 +77,7 @@ export function GameTable({ state, act, remove, nudge, next, rematch, leave }: P
           ? 'Tauschen oder ablegen'
           : 'Karte tauschen'
         : `${nameOf(g.current)} ist dran`;
-      clickable = (i) => myTurn && me.grid[i] !== null;
+      clickable = (i) => myTurn && !!me && me.grid[i] !== null;
       onSlot = (slot) => act({ type: 'swap', slot });
       break;
     case 'flipAfterDiscard':
@@ -84,6 +87,7 @@ export function GameTable({ state, act, remove, nudge, next, rematch, leave }: P
       break;
   }
   if (g.finisher && !over) hint += ` · ${nameOf(g.finisher)}: letzte Runde`;
+  if (spectator) hint = g.current ? `${nameOf(g.current)} ist dran` : 'Du schaust zu';
 
   const canDraw = myTurn && g.phase === 'draw';
 
@@ -95,6 +99,17 @@ export function GameTable({ state, act, remove, nudge, next, rematch, leave }: P
           <Typography component="span" variant="caption" sx={{ ml: 1, fontWeight: 400, opacity: 0.7 }}>
             Ziel {g.target}
           </Typography>
+          {state.room.spectatorCount > 0 && (
+            <Typography component="span" variant="caption" sx={{ ml: 1, fontWeight: 400, opacity: 0.7 }}>
+              <VisibilityIcon sx={{ fontSize: 14, verticalAlign: 'text-bottom', mr: 0.25 }} />
+              {state.room.spectatorCount}
+            </Typography>
+          )}
+          {spectator && (
+            <Button size="small" color="inherit" sx={{ ml: 1 }} onClick={leave}>
+              Verlassen
+            </Button>
+          )}
           {canNudge && (
             <Button size="small" sx={{ ml: 1 }} disabled={nudgeCooling} onClick={nudgeNow}>
               Anstupsen
@@ -165,15 +180,29 @@ export function GameTable({ state, act, remove, nudge, next, rematch, leave }: P
         )}
       </Stack>
 
-      <Paper sx={{ p: 2, outline: myTurn ? '2px solid #ff9800' : 'none', alignSelf: 'center' }}>
-        <Typography sx={{ fontWeight: 700 }}>{me.name}</Typography>
-        <Typography variant="body2" component="div" sx={{ mb: 1 }}>
-          Aktuell <b>{visibleSum(me.grid)}</b> · Gesamt {me.total}
-        </Typography>
-        <GridView grid={me.grid} canClick={clickable} onSlot={onSlot} pulseColumns={clearedBy(me.id)} pulseKey={g.eventSeq} />
-      </Paper>
+      {me && (
+        <Paper sx={{ p: 2, outline: myTurn ? '2px solid #ff9800' : 'none', alignSelf: 'center' }}>
+          <Typography sx={{ fontWeight: 700 }}>{me.name}</Typography>
+          <Typography variant="body2" component="div" sx={{ mb: 1 }}>
+            Aktuell <b>{visibleSum(me.grid)}</b> · Gesamt {me.total}
+          </Typography>
+          <GridView grid={me.grid} canClick={clickable} onSlot={onSlot} pulseColumns={clearedBy(me.id)} pulseKey={g.eventSeq} />
+        </Paper>
+      )}
 
-      {over && <Scoreboard game={g} isHost={isHost} next={next} rematch={rematch} leave={leave} />}
+      {over && (
+        <Scoreboard
+          game={g}
+          isHost={isHost}
+          spectator={spectator}
+          wantsToPlay={!!state.room.members.find((m) => m.id === state.me)?.wantsToPlay}
+          playRequests={state.room.members.filter((m) => m.spectator && m.wantsToPlay).length}
+          next={next}
+          rematch={rematch}
+          play={play}
+          leave={leave}
+        />
+      )}
       <div ref={endRef} />
     </Stack>
   );

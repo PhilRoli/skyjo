@@ -31,7 +31,7 @@ export function App() {
         ) : g.state.game === null ? (
           <Lobby state={g.state} onStart={g.start} onRemove={g.remove} onTarget={g.setTarget} onLeave={g.leave} />
         ) : (
-          <GameTable state={g.state} act={g.act} remove={g.remove} nudge={g.nudge} next={g.next} rematch={g.rematch} leave={g.leave} />
+          <GameTable state={g.state} act={g.act} remove={g.remove} nudge={g.nudge} next={g.next} rematch={g.rematch} play={g.play} leave={g.leave} />
         )}
       </Container>
       <VersionBadge />

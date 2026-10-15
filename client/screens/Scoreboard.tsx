@@ -14,12 +14,16 @@ import type { PlayerView } from '../../shared/view';
 interface Props {
   game: PlayerView;
   isHost: boolean;
+  spectator: boolean;
+  wantsToPlay: boolean;
+  playRequests: number;
   next: () => void;
   rematch: () => void;
+  play: () => void;
   leave: () => void;
 }
 
-export function Scoreboard({ game, isHost, next, rematch, leave }: Props) {
+export function Scoreboard({ game, isHost, spectator, wantsToPlay, playRequests, next, rematch, play, leave }: Props) {
   const over = game.phase === 'gameOver';
   const last = game.lastRound;
   const rows = over ? [...game.players].sort((a, b) => a.total - b.total) : game.players;
@@ -60,8 +64,17 @@ export function Scoreboard({ game, isHost, next, rematch, leave }: Props) {
           </TableBody>
         </Table>
         {isHost ? (
-          <Button variant="contained" onClick={over ? rematch : next}>
-            {over ? 'Revanche' : 'Nächste Runde'}
+          <>
+            {over && playRequests > 0 && (
+              <Typography variant="body2">{playRequests} Zuschauer möchten mitspielen</Typography>
+            )}
+            <Button variant="contained" onClick={over ? rematch : next}>
+              {over ? 'Revanche' : 'Nächste Runde'}
+            </Button>
+          </>
+        ) : spectator && over ? (
+          <Button variant="outlined" onClick={play}>
+            {wantsToPlay ? 'Anfrage zurückziehen' : 'Mitspielen'}
           </Button>
         ) : (
           <Typography>Warte auf den Host</Typography>
