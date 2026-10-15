@@ -264,3 +264,49 @@ describe('static files', () => {
     expect(await (await fetch(`${url}/some/room/path`)).text()).toBe('<title>Skyjo</title>');
   });
 });
+
+describe('spectators over sockets', () => {
+  async function startedGame() {
+    const base = await twoPlayers();
+    await base.a.request('game:start');
+    return base;
+  }
+
+  it('a late joiner watches without hidden values, cannot act, and players see the count', async () => {
+    const { a, created } = await startedGame();
+    const z = client();
+    const j = await z.request('room:join', { code: created.code, name: 'Zoe' });
+    expect(j.role).toBe('spectator');
+    const s = await z.until((x) => x.game !== null);
+    expect(s.role).toBe('spectator');
+    expect(s.game!.players).toHaveLength(2);
+    for (const p of s.game!.players) for (const c of p.grid) if (c && !c.up) expect(c.value).toBeNull();
+    expect((await z.request('game:action', { type: 'flipInitial', slot: 0 })).error).toBe('Zuschauer können nicht spielen');
+    expect((await z.request('game:nudge')).error).toBe('Zuschauer können nicht spielen');
+    expect((await z.request('room:play')).error).toBe('Gerade nicht möglich');
+    const seenByPlayer = await a.until((x) => x.room.spectatorCount === 1);
+    expect(seenByPlayer.room.members.some((m) => m.spectator)).toBe(true);
+  });
+
+  it('a reload (new socket + token) keeps the spectator role', async () => {
+    const { created } = await startedGame();
+    const z = client();
+    const j = await z.request('room:join', { code: created.code, name: 'Zoe' });
+    z.socket.close();
+    const z2 = client();
+    const r = await z2.request('room:rejoin', { code: created.code, token: j.token });
+    expect(r.role).toBe('spectator');
+    const s = await z2.until((x) => x.game !== null);
+    expect(s.role).toBe('spectator');
+  });
+
+  it('spectators get a kicked event when the last player leaves', async () => {
+    const { a, b, created } = await startedGame();
+    const z = client();
+    await z.request('room:join', { code: created.code, name: 'Zoe' });
+    const kicked = new Promise<void>((resolve) => z.socket.once('kicked', () => resolve()));
+    await b.request('room:leave');
+    await a.request('room:leave');
+    await kicked;
+  });
+});
