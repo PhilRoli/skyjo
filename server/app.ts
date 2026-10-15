@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import path from 'node:path';
 import express from 'express';
 import { Server, type Socket } from 'socket.io';
+import { BotRunner } from './bots';
 import { RoomManager } from './rooms';
 
 type Ack = (res: { ok: true; [k: string]: unknown } | { ok: false; error: string }) => void;
@@ -13,10 +14,12 @@ const CREATE_LIMIT = 5;
 const CREATE_WINDOW_MS = 60_000;
 
 export function createSkyjoServer(
-  opts: { manager?: RoomManager; staticDir?: string; maxSocketsPerIp?: number } = {},
+  opts: { manager?: RoomManager; staticDir?: string; maxSocketsPerIp?: number; botDelayMs?: number } = {},
 ) {
   const maxSocketsPerIp = opts.maxSocketsPerIp ?? MAX_SOCKETS_PER_IP;
   const manager = opts.manager ?? new RoomManager();
+  const runner = new BotRunner(manager, { delayMs: opts.botDelayMs });
+  manager.onRoomChange = (code) => runner.notify(code);
   const app = express();
   app.get('/healthz', (_req, res) => {
     res.send('ok');
@@ -30,6 +33,7 @@ export function createSkyjoServer(
   }
 
   const httpServer = createServer(app);
+  httpServer.on('close', () => runner.dispose());
   const io = new Server(httpServer);
   const personal = (code: string, id: string) => `${code}:${id}`;
   const broadcast = (code: string) => {
@@ -198,5 +202,5 @@ export function createSkyjoServer(
     });
   });
 
-  return { httpServer, io, manager };
+  return { httpServer, io, manager, runner };
 }

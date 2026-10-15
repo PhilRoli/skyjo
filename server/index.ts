@@ -3,16 +3,21 @@ import { createSkyjoServer } from './app';
 import { createPersistence } from './persist';
 
 const port = Number(process.env.PORT ?? 4400);
-const { httpServer, io, manager } = createSkyjoServer({ staticDir: path.resolve('client/dist') });
+const { httpServer, io, manager, runner } = createSkyjoServer({
+  staticDir: path.resolve('client/dist'),
+  botDelayMs: Number(process.env.BOT_DELAY_MS ?? 900),
+});
 
 const persistence = createPersistence(manager, path.resolve(process.env.DATA_DIR ?? 'data', 'rooms.json'));
 console.log(`restored ${persistence.load()} room(s)`);
 manager.onChange = persistence.schedule;
+runner.resumeAll();
 
 setInterval(() => manager.sweep(), 10 * 60 * 1000).unref();
 
 // Save before the sockets close, so the snapshot still reflects who was connected.
 const shutdown = () => {
+  runner.dispose();
   try {
     persistence.flush();
   } catch (e) {

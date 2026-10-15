@@ -16,7 +16,7 @@ const sockets: Socket[] = [];
 const serverOpts: { maxSocketsPerIp?: number } = {};
 
 beforeEach(async () => {
-  server = createSkyjoServer({ manager: new RoomManager(seeded(7)), ...serverOpts });
+  server = createSkyjoServer({ manager: new RoomManager(seeded(7)), botDelayMs: 0, ...serverOpts });
   await new Promise<void>((r) => server.httpServer.listen(0, r));
   url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
 });
@@ -205,7 +205,7 @@ describe('per-IP limits', () => {
   it('disconnects sockets beyond the per-IP maximum and frees slots on disconnect', async () => {
     await new Promise<void>((r) => server.io.close(() => r()));
     serverOpts.maxSocketsPerIp = 2;
-    server = createSkyjoServer({ manager: new RoomManager(seeded(7)), ...serverOpts });
+    server = createSkyjoServer({ manager: new RoomManager(seeded(7)), botDelayMs: 0, ...serverOpts });
     await new Promise<void>((r) => server.httpServer.listen(0, r));
     url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
     const a = client();
@@ -256,7 +256,7 @@ describe('static files', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'skyjo-static-'));
     writeFileSync(path.join(dir, 'index.html'), '<title>Skyjo</title>');
     writeFileSync(path.join(dir, 'manifest.webmanifest'), '{"name":"Skyjo"}');
-    server = createSkyjoServer({ manager: new RoomManager(seeded(7)), staticDir: dir });
+    server = createSkyjoServer({ manager: new RoomManager(seeded(7)), botDelayMs: 0, staticDir: dir });
     await new Promise<void>((r) => server.httpServer.listen(0, r));
     url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
     const manifest = await fetch(`${url}/manifest.webmanifest`);
