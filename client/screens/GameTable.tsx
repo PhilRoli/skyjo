@@ -98,10 +98,10 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
           return (
             <Paper key={p.id} sx={{ p: 1, outline: g.current === p.id ? '2px solid #ff9800' : 'none' }}>
               <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                {p.name} · {p.total}
-                <Typography component="span" variant="caption" sx={{ ml: 0.5, opacity: 0.7 }}>
-                  (Runde {visibleSum(p.grid)})
-                </Typography>
+                {p.name}
+              </Typography>
+              <Typography variant="caption" component="div" sx={{ mb: 0.5 }}>
+                Runde <b>{visibleSum(p.grid)}</b> · Gesamt {p.total}
               </Typography>
               {p.left ? (
                 <Typography variant="caption">ausgeschieden</Typography>
@@ -150,11 +150,9 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
       </Stack>
 
       <Paper sx={{ p: 2, outline: myTurn ? '2px solid #ff9800' : 'none', alignSelf: 'center' }}>
-        <Typography sx={{ fontWeight: 700, mb: 1 }}>
-          {me.name} · {me.total}
-          <Typography component="span" variant="caption" sx={{ ml: 0.5, opacity: 0.7 }}>
-            (Runde {visibleSum(me.grid)})
-          </Typography>
+        <Typography sx={{ fontWeight: 700 }}>{me.name}</Typography>
+        <Typography variant="body2" component="div" sx={{ mb: 1 }}>
+          Runde <b>{visibleSum(me.grid)}</b> · Gesamt {me.total}
         </Typography>
         <GridView grid={me.grid} canClick={clickable} onSlot={onSlot} pulseColumns={clearedBy(me.id)} pulseKey={g.eventSeq} />
       </Paper>
