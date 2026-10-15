@@ -210,3 +210,52 @@ describe('minors', () => {
     expect(() => m.create('C')).toThrow('Server ausgelastet');
   });
 });
+
+describe('snapshot / restore', () => {
+  it('restores rooms, members, tokens and the running game', () => {
+    const { m, code, host, rest } = lobby(['Anna', 'Ben']);
+    m.start(code, host.playerId);
+    m.act(code, host.playerId, { type: 'flipInitial', slot: 0 });
+    const before = m.stateFor(code, host.playerId);
+
+    const m2 = mk();
+    m2.restore(JSON.parse(JSON.stringify(m.snapshot())));
+    const r = m2.rejoin(code, rest[0].token);
+    expect(r.playerId).toBe(rest[0].playerId);
+    const after = m2.stateFor(code, host.playerId);
+    expect(after.game?.players).toEqual(before.game?.players);
+    expect(after.room.hostId).toBe(before.room.hostId);
+  });
+
+  it('marks everyone as disconnected after a restore', () => {
+    const { m, code, host } = lobby(['Anna', 'Ben']);
+    const m2 = mk();
+    m2.restore(JSON.parse(JSON.stringify(m.snapshot())));
+    expect(m2.stateFor(code, host.playerId).room.members.every((x) => !x.connected)).toBe(true);
+  });
+
+  it('keeps the original host for a grace period after a restore', () => {
+    let t = 0;
+    const m = new RoomManager(seeded(5), () => t);
+    const host = m.create('Anna');
+    const ben = m.join(host.code, 'Ben');
+    const m2 = new RoomManager(seeded(5), () => t);
+    m2.restore(JSON.parse(JSON.stringify(m.snapshot())));
+    m2.setConnected(host.code, ben.playerId, true);
+    expect(m2.stateFor(host.code, ben.playerId).room.hostId).toBe(host.playerId);
+    t = 60_000;
+    m2.setConnected(host.code, ben.playerId, true);
+    expect(m2.stateFor(host.code, ben.playerId).room.hostId).toBe(ben.playerId);
+  });
+
+  it('calls onChange for mutations and removals', () => {
+    let calls = 0;
+    const m = mk();
+    m.onChange = () => calls++;
+    const h = m.create('Anna');
+    const afterCreate = calls;
+    expect(afterCreate).toBeGreaterThan(0);
+    m.leave(h.code, h.playerId);
+    expect(calls).toBeGreaterThan(afterCreate);
+  });
+});

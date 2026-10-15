@@ -5,6 +5,7 @@ import { viewFor, type ClientState } from '../shared/view';
 
 const MAX_NAME = 16;
 const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
+const HOST_GRACE_MS = 30_000;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 interface Member {
@@ -15,6 +16,16 @@ interface Member {
 }
 
 interface Room {
+  code: string;
+  hostId: string;
+  members: Member[];
+  game: GameState | null;
+  lastActivity: number;
+  /** Not persisted: after a restart the original host gets a moment to return before the role moves. */
+  hostGraceUntil?: number;
+}
+
+export interface RoomSnapshot {
   code: string;
   hostId: string;
   members: Member[];
@@ -32,6 +43,7 @@ function cleanName(name: unknown): string {
 
 export class RoomManager {
   private rooms = new Map<string, Room>();
+  onChange?: () => void;
 
   constructor(
     private rng: Rng = Math.random,
@@ -62,6 +74,7 @@ export class RoomManager {
 
   private touch(room: Room): void {
     room.lastActivity = this.now();
+    this.onChange?.();
   }
 
   private newCode(): string {
@@ -87,6 +100,7 @@ export class RoomManager {
       game: null,
       lastActivity: this.now(),
     });
+    this.onChange?.();
     return { code, playerId: member.id, token: member.token };
   }
 
@@ -175,6 +189,7 @@ export class RoomManager {
     const remaining = room.members.filter((m) => m.id !== playerId && !this.isLeft(room, m.id));
     if (remaining.length === 0) {
       this.rooms.delete(room.code);
+      this.onChange?.();
       return;
     }
     if (room.hostId === playerId) {
@@ -188,7 +203,7 @@ export class RoomManager {
     const member = room?.members.find((m) => m.id === playerId);
     if (!room || !member) return;
     member.connected = connected;
-    if (connected) {
+    if (connected && !(room.hostGraceUntil && this.now() < room.hostGraceUntil)) {
       const host = room.members.find((m) => m.id === room.hostId);
       if (!host || !host.connected || this.isLeft(room, host.id)) room.hostId = playerId;
     }
@@ -225,6 +240,28 @@ export class RoomManager {
     };
   }
 
+  snapshot(): RoomSnapshot[] {
+    return [...this.rooms.values()].map(({ code, hostId, members, game, lastActivity }) => ({
+      code,
+      hostId,
+      members,
+      game,
+      lastActivity,
+    }));
+  }
+
+  /** Loads rooms from a snapshot; nobody is connected until their client rejoins. */
+  restore(snapshots: RoomSnapshot[]): void {
+    for (const s of snapshots) {
+      this.rooms.set(s.code, {
+        ...s,
+        members: s.members.map((m) => ({ ...m, connected: false })),
+        lastActivity: this.now(),
+        hostGraceUntil: this.now() + HOST_GRACE_MS,
+      });
+    }
+  }
+
   sweep(): number {
     let removed = 0;
     for (const [code, room] of this.rooms) {
@@ -234,6 +271,7 @@ export class RoomManager {
         removed++;
       }
     }
+    if (removed > 0) this.onChange?.();
     return removed;
   }
 }
