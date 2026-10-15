@@ -2,16 +2,20 @@ import { existsSync } from 'node:fs';
 import { createServer } from 'node:http';
 import path from 'node:path';
 import express from 'express';
-import { Server } from 'socket.io';
+import { Server, type Socket } from 'socket.io';
 import { RoomManager } from './rooms';
 
 type Ack = (res: { ok: true; [k: string]: unknown } | { ok: false; error: string }) => void;
 type SocketData = { code?: string; playerId?: string };
 
+const MAX_SOCKETS_PER_IP = 20;
 const CREATE_LIMIT = 5;
 const CREATE_WINDOW_MS = 60_000;
 
-export function createSkyjoServer(opts: { manager?: RoomManager; staticDir?: string } = {}) {
+export function createSkyjoServer(
+  opts: { manager?: RoomManager; staticDir?: string; maxSocketsPerIp?: number } = {},
+) {
+  const maxSocketsPerIp = opts.maxSocketsPerIp ?? MAX_SOCKETS_PER_IP;
   const manager = opts.manager ?? new RoomManager();
   const app = express();
   app.get('/healthz', (_req, res) => {
@@ -34,8 +38,35 @@ export function createSkyjoServer(opts: { manager?: RoomManager; staticDir?: str
     }
   };
 
+  // Behind Caddy the first X-Forwarded-For entry is the real client; the app port is bound to localhost only.
+  const clientIp = (socket: Socket): string => {
+    const fwd = socket.handshake.headers['x-forwarded-for'];
+    const first = (Array.isArray(fwd) ? fwd[0] : fwd)?.split(',')[0].trim();
+    return first || socket.handshake.address;
+  };
+  const socketsByIp = new Map<string, number>();
+  const createdByIp = new Map<string, number[]>();
+  setInterval(() => {
+    const now = Date.now();
+    for (const [ip, times] of createdByIp) {
+      if (times.every((t) => now - t > CREATE_WINDOW_MS)) createdByIp.delete(ip);
+    }
+  }, CREATE_WINDOW_MS).unref();
+
   io.on('connection', (socket) => {
     const data = socket.data as SocketData;
+    const ip = clientIp(socket);
+    const open = (socketsByIp.get(ip) ?? 0) + 1;
+    if (open > maxSocketsPerIp) {
+      socket.disconnect(true);
+      return;
+    }
+    socketsByIp.set(ip, open);
+    socket.on('disconnect', () => {
+      const left = (socketsByIp.get(ip) ?? 1) - 1;
+      if (left <= 0) socketsByIp.delete(ip);
+      else socketsByIp.set(ip, left);
+    });
 
     const release = (code: string, playerId: string) => {
       const size = io.sockets.adapter.rooms.get(personal(code, playerId))?.size ?? 0;
@@ -80,12 +111,14 @@ export function createSkyjoServer(opts: { manager?: RoomManager; staticDir?: str
       });
     };
 
-    const createdAt: number[] = [];
     on('room:create', ({ name }) => {
       const now = Date.now();
-      while (createdAt.length && now - createdAt[0] > CREATE_WINDOW_MS) createdAt.shift();
-      if (createdAt.length >= CREATE_LIMIT) throw new Error('Zu viele Räume erstellt');
-      createdAt.push(now);
+      const createdAt = (createdByIp.get(ip) ?? []).filter((t) => now - t <= CREATE_WINDOW_MS);
+      if (createdAt.length >= CREATE_LIMIT) {
+        createdByIp.set(ip, createdAt);
+        throw new Error('Zu viele Räume erstellt');
+      }
+      createdByIp.set(ip, [...createdAt, now]);
       const r = manager.create(name);
       attach(r.code, r.playerId);
       return r;

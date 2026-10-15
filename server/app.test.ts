@@ -10,8 +10,10 @@ let server: ReturnType<typeof createSkyjoServer>;
 let url: string;
 const sockets: Socket[] = [];
 
+const serverOpts: { maxSocketsPerIp?: number } = {};
+
 beforeEach(async () => {
-  server = createSkyjoServer({ manager: new RoomManager(seeded(7)) });
+  server = createSkyjoServer({ manager: new RoomManager(seeded(7)), ...serverOpts });
   await new Promise<void>((r) => server.httpServer.listen(0, r));
   url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
 });
@@ -22,8 +24,8 @@ afterEach(async () => {
   await new Promise<void>((r) => server.io.close(() => r()));
 });
 
-function client() {
-  const socket = connect(url, { transports: ['websocket'], forceNew: true });
+function client(headers: Record<string, string> = {}) {
+  const socket = connect(url, { transports: ['websocket'], forceNew: true, extraHeaders: headers });
   sockets.push(socket);
   let last: ClientState | null = null;
   const waiters: (() => void)[] = [];
@@ -173,5 +175,46 @@ describe('session handling per socket', () => {
     for (let i = 0; i < 6; i++) results.push((await a.request('room:create', { name: `P${i}` })).ok);
     expect(results).toEqual([true, true, true, true, true, false]);
     expect((await a.request('room:create', { name: 'again' })).error).toBe('Zu viele Räume erstellt');
+  });
+});
+
+describe('per-IP limits', () => {
+  afterEach(() => {
+    delete serverOpts.maxSocketsPerIp;
+  });
+
+  it('shares the room creation limit across all sockets of one IP', async () => {
+    const a = client();
+    const b = client();
+    const results: boolean[] = [];
+    for (let i = 0; i < 3; i++) results.push((await a.request('room:create', { name: `A${i}` })).ok);
+    for (let i = 0; i < 3; i++) results.push((await b.request('room:create', { name: `B${i}` })).ok);
+    expect(results).toEqual([true, true, true, true, true, false]);
+  });
+
+  it('counts different forwarded client IPs separately', async () => {
+    const a = client({ 'x-forwarded-for': '203.0.113.1' });
+    const b = client({ 'x-forwarded-for': '203.0.113.2' });
+    for (let i = 0; i < 5; i++) expect((await a.request('room:create', { name: `A${i}` })).ok).toBe(true);
+    expect((await a.request('room:create', { name: 'A5' })).ok).toBe(false);
+    expect((await b.request('room:create', { name: 'B0' })).ok).toBe(true);
+  });
+
+  it('disconnects sockets beyond the per-IP maximum and frees slots on disconnect', async () => {
+    await new Promise<void>((r) => server.io.close(() => r()));
+    serverOpts.maxSocketsPerIp = 2;
+    server = createSkyjoServer({ manager: new RoomManager(seeded(7)), ...serverOpts });
+    await new Promise<void>((r) => server.httpServer.listen(0, r));
+    url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
+    const a = client();
+    const b = client();
+    await a.request('room:create', { name: 'A' });
+    await b.request('room:create', { name: 'B' });
+    const c = client();
+    await new Promise<void>((resolve) => c.socket.once('disconnect', () => resolve()));
+    a.socket.close();
+    await new Promise((r) => setTimeout(r, 100));
+    const d = client();
+    expect((await d.request('room:create', { name: 'D' })).ok).toBe(true);
   });
 });
