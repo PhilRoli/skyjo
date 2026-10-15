@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -27,6 +31,7 @@ interface Props {
 
 export function GameTable({ state, act, remove, nudge, next, rematch, play, leave }: Props) {
   const g = state.game!;
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const isHost = state.room.hostId === state.me;
   const spectator = state.role === 'spectator';
   const me = g.players.find((p) => p.id === g.me); // undefined for spectators
@@ -107,8 +112,8 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
               {state.room.spectatorCount}
             </Typography>
           )}
-          {spectator && (
-            <Button size="small" color="inherit" sx={{ ml: 1 }} onClick={leave}>
+          {!over && (
+            <Button size="small" color="inherit" sx={{ ml: 1 }} onClick={spectator ? leave : () => setConfirmLeave(true)}>
               Verlassen
             </Button>
           )}
@@ -207,6 +212,18 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
         />
       )}
       <div ref={endRef} />
+      <Dialog open={confirmLeave} onClose={() => setConfirmLeave(false)}>
+        <DialogTitle sx={{ fontWeight: 700 }}>Raum verlassen?</DialogTitle>
+        <DialogContent>Du scheidest aus dem laufenden Spiel aus.</DialogContent>
+        <DialogActions>
+          <Button color="inherit" onClick={() => setConfirmLeave(false)}>
+            Abbrechen
+          </Button>
+          <Button color="warning" onClick={leave}>
+            Verlassen
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }
