@@ -2,10 +2,10 @@ services:
   web:
     build: .
     ports:
-      - "127.0.0.1:4300:4300"
+      - "127.0.0.1:4400:4400"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4300/healthz"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4400/healthz"]
       interval: 30s
       timeout: 5s
       retries: 3
