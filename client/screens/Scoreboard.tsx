@@ -10,6 +10,7 @@ import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import type { PlayerView } from '../../shared/view';
+import { RoundChart } from '../components/RoundChart';
 
 interface Props {
   game: PlayerView;
@@ -26,7 +27,7 @@ interface Props {
 export function Scoreboard({ game, isHost, spectator, wantsToPlay, playRequests, next, rematch, play, leave }: Props) {
   const over = game.phase === 'gameOver';
   const last = game.lastRound;
-  const rows = over ? [...game.players].sort((a, b) => a.total - b.total) : game.players;
+  const rows = [...game.players].sort((a, b) => a.total - b.total);
   const winnerNames = game.players.filter((p) => game.winners.includes(p.id)).map((p) => p.name);
   return (
     <Paper sx={{ p: 2 }}>
@@ -63,6 +64,7 @@ export function Scoreboard({ game, isHost, spectator, wantsToPlay, playRequests,
             ))}
           </TableBody>
         </Table>
+        {last?.trace && last.trace.length > 1 && <RoundChart me={game.me} trace={last.trace} />}
         {isHost ? (
           <>
             {over && playRequests > 0 && (

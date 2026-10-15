@@ -4,6 +4,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Snackbar from '@mui/material/Snackbar';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { GameTable } from './screens/GameTable';
+import { LeaveButton } from './components/LeaveButton';
 import { AnimationsToggle, RulesButton } from './components/RulesDialog';
 import { VersionBadge } from './components/VersionBadge';
 import { Home } from './screens/Home';
@@ -21,9 +22,16 @@ export function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Container maxWidth="md" sx={{ pb: 4 }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 8 }}>
-          <AnimationsToggle />
-          <RulesButton />
+        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8 }}>
+          <div>
+            {g.state?.game && g.state.game.phase !== 'roundOver' && g.state.game.phase !== 'gameOver' && (
+              <LeaveButton spectator={g.state.role === 'spectator'} onLeave={g.leave} />
+            )}
+          </div>
+          <div>
+            <AnimationsToggle />
+            <RulesButton />
+          </div>
         </div>
         {!g.connected && !g.booting && <Alert severity="warning">Verbindung getrennt</Alert>}
         {g.booting ? null : g.state === null ? (

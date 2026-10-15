@@ -7,6 +7,16 @@ export interface ReleaseNote {
 /** Newest first. Shown in the app when clicking the version. */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.4.0',
+    title: 'Rundenverlauf',
+    items: [
+      'Am Rundenende zeigt ein Graph den eigenen Punkteverlauf mit dem noch möglichen Maximum und Minimum (je nach Karten, die noch nicht zu sehen waren).',
+      'Das Scoreboard ist immer nach Punkten sortiert (wenigste zuerst).',
+      'Verlassen ist jetzt ein Icon oben links.',
+      'Der zuletzt verwendete Name wird gemerkt.',
+    ],
+  },
+  {
     version: '1.3.1',
     title: 'Raum verlassen',
     items: ['Im laufenden Spiel kann man den Raum jetzt verlassen.'],

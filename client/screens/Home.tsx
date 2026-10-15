@@ -4,6 +4,24 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
+const NAME_KEY = 'skyjo:name';
+
+function loadName(): string {
+  try {
+    return localStorage.getItem(NAME_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function saveName(name: string): void {
+  try {
+    localStorage.setItem(NAME_KEY, name.trim());
+  } catch {
+    /* Speicher nicht verfügbar */
+  }
+}
+
 interface Props {
   initialCode: string;
   onCreate: (name: string) => void;
@@ -11,7 +29,7 @@ interface Props {
 }
 
 export function Home({ initialCode, onCreate, onJoin }: Props) {
-  const [name, setName] = useState('');
+  const [name, setName] = useState(loadName);
   const [code, setCode] = useState(initialCode);
   const nameOk = name.trim().length > 0;
   return (
@@ -25,7 +43,10 @@ export function Home({ initialCode, onCreate, onJoin }: Props) {
         onChange={(e) => setName(e.target.value)}
         slotProps={{ htmlInput: { maxLength: 16 } }}
       />
-      <Button variant="contained" size="large" disabled={!nameOk} onClick={() => onCreate(name)}>
+      <Button variant="contained" size="large" disabled={!nameOk} onClick={() => {
+          saveName(name);
+          onCreate(name);
+        }}>
         Raum erstellen
       </Button>
       <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -39,7 +60,10 @@ export function Home({ initialCode, onCreate, onJoin }: Props) {
           slotProps={{ htmlInput: { maxLength: 4 } }}
           sx={{ flex: 1 }}
         />
-        <Button variant="outlined" disabled={!nameOk || code.trim().length !== 4} onClick={() => onJoin(code, name)}>
+        <Button variant="outlined" disabled={!nameOk || code.trim().length !== 4} onClick={() => {
+            saveName(name);
+            onJoin(code, name);
+          }}>
           Beitreten
         </Button>
       </Stack>
