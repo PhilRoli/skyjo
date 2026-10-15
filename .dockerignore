@@ -4,3 +4,4 @@ docs
 .git
 .superpowers
 *.log
+data/

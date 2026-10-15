@@ -316,3 +316,69 @@ describe('winners', () => {
     expect(winners(s)).toEqual(['A', 'B']);
   });
 });
+
+describe('turn events', () => {
+  const fresh = () => mkState([cells(FILL, ALL_HIDDEN), cells(FILL)]);
+
+  it('records a draw without revealing the value', () => {
+    const s = act(fresh(), 'A', { type: 'drawFromDeck' });
+    expect(s.events).toEqual([{ kind: 'draw', by: 'A' }]);
+    expect(s.eventSeq).toBe(1);
+  });
+
+  it('records take-discard, swap, discard and flip with their public values', () => {
+    let s = act(fresh(), 'A', { type: 'takeDiscard' });
+    expect(s.events).toEqual([{ kind: 'takeDiscard', by: 'A', value: 9 }]);
+    s = act(s, 'A', { type: 'swap', slot: 0 });
+    expect(s.events).toEqual([
+      { kind: 'takeDiscard', by: 'A', value: 9 },
+      { kind: 'swap', by: 'A', value: 9, replaced: FILL[0] },
+    ]);
+    let t = act(fresh(), 'A', { type: 'drawFromDeck' });
+    t = act(t, 'A', { type: 'discardDrawn' });
+    t = act(t, 'A', { type: 'flipHidden', slot: 5 });
+    expect(t.events).toEqual([
+      { kind: 'draw', by: 'A' },
+      { kind: 'discard', by: 'A', value: 4 },
+      { kind: 'flip', by: 'A', value: FILL[5] },
+    ]);
+  });
+
+  it('keeps the previous turn visible until the next player starts a turn', () => {
+    let s = act(fresh(), 'A', { type: 'drawFromDeck' });
+    s = act(s, 'A', { type: 'swap', slot: 0 });
+    expect(s.events).toHaveLength(2);
+    s = act(s, 'B', { type: 'drawFromDeck' });
+    expect(s.events).toEqual([{ kind: 'draw', by: 'B' }]);
+    expect(s.eventSeq).toBe(3);
+  });
+
+  it('records a removed column', () => {
+    let s = mkState([cells([5, 5, 7, ...FILL.slice(3)], [2, 11]), cells(FILL)], {
+      phase: 'place',
+      drawn: 5,
+      drawnFrom: 'deck',
+    });
+    s = act(s, 'A', { type: 'swap', slot: 2 });
+    expect(s.events).toContainEqual({ kind: 'clear', by: 'A', column: 0, value: 5 });
+  });
+
+  it('records columns that disappear at the round scoring', () => {
+    const s0 = mkState(
+      [cells([...Array(9).fill(null), 0, 0, 1]), cells([4, 4, 4, ...FILL.slice(3)], [0, 1])],
+      { phase: 'flipAfterDiscard', current: 1, finisher: 'A', pendingFinal: ['B'] },
+    );
+    const s = act(s0, 'B', { type: 'flipHidden', slot: 0 });
+    expect(s.events).toContainEqual({ kind: 'clear', by: 'B', column: 0, value: 4 });
+  });
+
+  it('does not record events during the initial flip', () => {
+    const s = act(
+      mkState([cells(FILL, ALL_HIDDEN), cells(FILL, ALL_HIDDEN)], { phase: 'initialFlip' }),
+      'A',
+      { type: 'flipInitial', slot: 0 },
+    );
+    expect(s.events).toEqual([]);
+    expect(s.eventSeq).toBe(0);
+  });
+});

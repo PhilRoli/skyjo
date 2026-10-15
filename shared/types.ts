@@ -30,6 +30,14 @@ export interface RoundResult {
   finisher: string | null;
 }
 
+export type GameEvent =
+  | { kind: 'draw'; by: string }
+  | { kind: 'takeDiscard'; by: string; value: number }
+  | { kind: 'swap'; by: string; value: number; replaced: number }
+  | { kind: 'discard'; by: string; value: number }
+  | { kind: 'flip'; by: string; value: number }
+  | { kind: 'clear'; by: string; column: number; value: number };
+
 export interface GameState {
   phase: Phase;
   round: number;
@@ -43,6 +51,8 @@ export interface GameState {
   pendingFinal: string[];
   initialDone: string[];
   lastRound: RoundResult | null;
+  events: GameEvent[];
+  eventSeq: number;
 }
 
 export type Action =

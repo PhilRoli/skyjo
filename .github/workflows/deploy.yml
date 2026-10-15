@@ -43,6 +43,8 @@ jobs:
           printf 'Host 178.105.205.216\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' > ~/.ssh/config
 
       - run: ./deploy.sh
+        env:
+          APP_VERSION: ${{ github.event.release.tag_name || github.sha }}
 
       - name: Health check
         run: |

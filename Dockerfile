@@ -1,4 +1,6 @@
 FROM oven/bun:1-alpine AS build
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
@@ -13,6 +15,8 @@ RUN bun install --frozen-lockfile --production
 COPY shared ./shared
 COPY server ./server
 COPY --from=build /app/client/dist ./client/dist
+RUN mkdir -p /app/data && chown bun:bun /app/data
+VOLUME /app/data
 USER bun
 EXPOSE 4400
 CMD ["bun", "server/index.ts"]

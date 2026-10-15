@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   root: 'client',
   plugins: [react()],
+  define: { __APP_VERSION__: JSON.stringify(process.env.APP_VERSION || 'dev') },
   build: { outDir: 'dist', emptyOutDir: true },
   server: {
     fs: { allow: ['..'] },

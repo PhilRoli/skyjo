@@ -7,9 +7,12 @@ interface Props {
   size?: 'normal' | 'small';
   canClick?: (slot: number) => boolean;
   onSlot?: (slot: number) => void;
+  /** Columns whose removal just happened; `pulseKey` restarts the animation for each new event. */
+  pulseColumns?: number[];
+  pulseKey?: number;
 }
 
-export function GridView({ grid, size = 'normal', canClick, onSlot }: Props) {
+export function GridView({ grid, size = 'normal', canClick, onSlot, pulseColumns = [], pulseKey = 0 }: Props) {
   return (
     <Box
       sx={{
@@ -22,9 +25,11 @@ export function GridView({ grid, size = 'normal', canClick, onSlot }: Props) {
     >
       {grid.map((cell, i) => {
         const clickable = canClick?.(i) ?? false;
+        const pulse = cell === null && pulseColumns.includes(Math.floor(i / 3));
         return (
           <CardView
-            key={i}
+            key={pulse ? `${i}-${pulseKey}` : i}
+            pulse={pulse}
             cell={cell}
             size={size}
             highlight={clickable}

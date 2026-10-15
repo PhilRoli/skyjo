@@ -15,9 +15,10 @@ interface Props {
   size?: 'normal' | 'small';
   onClick?: () => void;
   highlight?: boolean;
+  pulse?: boolean;
 }
 
-export function CardView({ cell, size = 'normal', onClick, highlight }: Props) {
+export function CardView({ cell, size = 'normal', onClick, highlight, pulse }: Props) {
   const small = size === 'small';
   const base = {
     width: small ? 30 : 56,
@@ -30,7 +31,22 @@ export function CardView({ cell, size = 'normal', onClick, highlight }: Props) {
     fontSize: small ? 14 : 26,
     userSelect: 'none',
   } as const;
-  if (!cell) return <Box sx={{ ...base, border: '2px dashed', borderColor: 'divider' }} />;
+  if (!cell) {
+    return (
+      <Box
+        sx={{
+          ...base,
+          border: '2px dashed',
+          borderColor: 'divider',
+          animation: pulse ? 'skyjo-pulse 1.2s ease-out 2' : 'none',
+          '@keyframes skyjo-pulse': {
+            '0%': { boxShadow: '0 0 0 0 rgba(255,152,0,0.9)', borderColor: '#ff9800' },
+            '100%': { boxShadow: '0 0 0 14px rgba(255,152,0,0)' },
+          },
+        }}
+      />
+    );
+  }
   const face = cell.up && cell.value !== null ? COLORS[cardColor(cell.value)] : null;
   return (
     <Box
