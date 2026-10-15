@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { apply, newGame, removePlayer, startRound } from '../shared/rules';
-import { MAX_PLAYERS, type Action, type GameState, type Rng } from '../shared/types';
+import { ALLOWED_TARGETS, DEFAULT_TARGET, MAX_PLAYERS, type Action, type GameState, type Rng } from '../shared/types';
 import { viewFor, type ClientState } from '../shared/view';
 
 const MAX_NAME = 16;
 const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
 const HOST_GRACE_MS = 30_000;
+const NUDGE_COOLDOWN_MS = 10_000;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 interface Member {
@@ -20,9 +21,12 @@ interface Room {
   hostId: string;
   members: Member[];
   game: GameState | null;
+  target: number;
   lastActivity: number;
   /** Not persisted: after a restart the original host gets a moment to return before the role moves. */
   hostGraceUntil?: number;
+  /** Not persisted: limits nudging to once per cooldown for the whole room. */
+  lastNudgeAt?: number;
 }
 
 export interface RoomSnapshot {
@@ -30,6 +34,7 @@ export interface RoomSnapshot {
   hostId: string;
   members: Member[];
   game: GameState | null;
+  target?: number;
   lastActivity: number;
 }
 
@@ -98,6 +103,7 @@ export class RoomManager {
       hostId: member.id,
       members: [member],
       game: null,
+      target: DEFAULT_TARGET,
       lastActivity: this.now(),
     });
     this.onChange?.();
@@ -134,7 +140,34 @@ export class RoomManager {
     room.game = newGame(
       room.members.map(({ id, name }) => ({ id, name })),
       this.rng,
+      room.target,
     );
+    this.touch(room);
+  }
+
+  nudge(code: string, playerId: string): { targetId: string; fromName: string } {
+    const room = this.room(code);
+    const from = this.member(room, playerId);
+    const game = room.game;
+    const turnPhase = game && ['draw', 'place', 'flipAfterDiscard'].includes(game.phase);
+    if (!game || !turnPhase) throw new Error('Gerade nicht möglich');
+    const target = game.players[game.current];
+    if (target.id === playerId) throw new Error('Du bist selbst dran');
+    if (room.lastNudgeAt !== undefined && this.now() - room.lastNudgeAt < NUDGE_COOLDOWN_MS) {
+      throw new Error('Bitte kurz warten');
+    }
+    room.lastNudgeAt = this.now();
+    return { targetId: target.id, fromName: from.name };
+  }
+
+  setTarget(code: string, playerId: string, target: unknown): void {
+    const room = this.room(code);
+    this.requireHost(room, playerId);
+    if (room.game) throw new Error('Das Spiel läuft bereits');
+    if (typeof target !== 'number' || !ALLOWED_TARGETS.includes(target)) {
+      throw new Error('Ungültige Zielpunktzahl');
+    }
+    room.target = target;
     this.touch(room);
   }
 
@@ -163,6 +196,7 @@ export class RoomManager {
     room.game = newGame(
       room.members.map(({ id, name }) => ({ id, name })),
       this.rng,
+      room.target,
     );
     this.touch(room);
   }
@@ -229,6 +263,7 @@ export class RoomManager {
         code: room.code,
         hostId: room.hostId,
         started: room.game !== null,
+        target: room.target,
         members: room.members.map((m) => ({
           id: m.id,
           name: m.name,
@@ -241,11 +276,12 @@ export class RoomManager {
   }
 
   snapshot(): RoomSnapshot[] {
-    return [...this.rooms.values()].map(({ code, hostId, members, game, lastActivity }) => ({
+    return [...this.rooms.values()].map(({ code, hostId, members, game, target, lastActivity }) => ({
       code,
       hostId,
       members,
       game,
+      target,
       lastActivity,
     }));
   }
@@ -255,6 +291,7 @@ export class RoomManager {
     for (const s of snapshots) {
       this.rooms.set(s.code, {
         ...s,
+        target: s.target ?? DEFAULT_TARGET,
         members: s.members.map((m) => ({ ...m, connected: false })),
         lastActivity: this.now(),
         hostGraceUntil: this.now() + HOST_GRACE_MS,

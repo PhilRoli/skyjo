@@ -1,4 +1,7 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { io as connect, type Socket } from 'socket.io-client';
 import { createSkyjoServer } from './app';
@@ -216,5 +219,49 @@ describe('per-IP limits', () => {
     await new Promise((r) => setTimeout(r, 100));
     const d = client();
     expect((await d.request('room:create', { name: 'D' })).ok).toBe(true);
+  });
+});
+
+describe('room settings', () => {
+  it('the host sets the target score and everyone sees it', async () => {
+    const { a, b } = await twoPlayers();
+    expect((await b.request('room:settings', { target: 50 })).error).toBe('Nur der Host kann das');
+    expect((await a.request('room:settings', { target: 50 })).ok).toBe(true);
+    const s = await b.until((x) => x.room.target === 50);
+    expect(s.room.target).toBe(50);
+  });
+});
+
+describe('nudge over sockets', () => {
+  it('delivers a nudged event with the sender name to the player whose turn it is', async () => {
+    const { a, b, joined, created } = await twoPlayers();
+    await a.request('game:start');
+    for (const c of [a, b]) {
+      await c.request('game:action', { type: 'flipInitial', slot: 0 });
+      await c.request('game:action', { type: 'flipInitial', slot: 1 });
+    }
+    const s = await a.until((x) => x.game?.phase === 'draw');
+    const aIsCurrent = s.game!.current === created.playerId;
+    const [current, other, otherName] = aIsCurrent ? [a, b, 'Ben'] : [b, a, 'Anna'];
+    const got = new Promise<{ from: string }>((resolve) => current.socket.once('nudged', resolve));
+    expect((await other.request('game:nudge')).ok).toBe(true);
+    expect((await got).from).toBe(otherName);
+    expect((await current.request('game:nudge')).error).toBe('Du bist selbst dran');
+    expect(joined.playerId).toBeTruthy();
+  });
+});
+
+describe('static files', () => {
+  it('serves the manifest with the right type and falls back to index.html for unknown paths', async () => {
+    await new Promise<void>((r) => server.io.close(() => r()));
+    const dir = mkdtempSync(path.join(tmpdir(), 'skyjo-static-'));
+    writeFileSync(path.join(dir, 'index.html'), '<title>Skyjo</title>');
+    writeFileSync(path.join(dir, 'manifest.webmanifest'), '{"name":"Skyjo"}');
+    server = createSkyjoServer({ manager: new RoomManager(seeded(7)), staticDir: dir });
+    await new Promise<void>((r) => server.httpServer.listen(0, r));
+    url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
+    const manifest = await fetch(`${url}/manifest.webmanifest`);
+    expect(manifest.headers.get('content-type')).toContain('manifest+json');
+    expect(await (await fetch(`${url}/some/room/path`)).text()).toBe('<title>Skyjo</title>');
   });
 });

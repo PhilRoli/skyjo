@@ -259,3 +259,65 @@ describe('snapshot / restore', () => {
     expect(calls).toBeGreaterThan(afterCreate);
   });
 });
+
+describe('target score setting', () => {
+  it('lets only the host change it, only before the game, and only to allowed values', () => {
+    const { m, code, host, rest } = lobby(['Anna', 'Ben']);
+    expect(m.stateFor(code, host.playerId).room.target).toBe(100);
+    expect(() => m.setTarget(code, rest[0].playerId, 50)).toThrow('Nur der Host kann das');
+    expect(() => m.setTarget(code, host.playerId, 75)).toThrow('Ungültige Zielpunktzahl');
+    m.setTarget(code, host.playerId, 50);
+    expect(m.stateFor(code, rest[0].playerId).room.target).toBe(50);
+    m.start(code, host.playerId);
+    expect(m.stateFor(code, host.playerId).game?.target).toBe(50);
+    expect(() => m.setTarget(code, host.playerId, 150)).toThrow('Das Spiel läuft bereits');
+  });
+
+  it('survives a snapshot restore', () => {
+    const { m, code, host } = lobby(['Anna', 'Ben']);
+    m.setTarget(code, host.playerId, 150);
+    const m2 = mk();
+    m2.restore(JSON.parse(JSON.stringify(m.snapshot())));
+    expect(m2.stateFor(code, host.playerId).room.target).toBe(150);
+  });
+});
+
+describe('nudge', () => {
+  function inTurnPhase(now: () => number) {
+    const m = new RoomManager(seeded(5), now);
+    const host = m.create('Anna');
+    const ben = m.join(host.code, 'Ben');
+    m.start(host.code, host.playerId);
+    for (const id of [host.playerId, ben.playerId]) {
+      m.act(host.code, id, { type: 'flipInitial', slot: 0 });
+      m.act(host.code, id, { type: 'flipInitial', slot: 1 });
+    }
+    const game = m.stateFor(host.code, host.playerId).game!;
+    const current = game.current === host.playerId ? host : ben;
+    const other = current === host ? ben : host;
+    return { m, code: host.code, current, other };
+  }
+
+  it('returns the current player and the sender name', () => {
+    const { m, code, current, other } = inTurnPhase(() => 0);
+    const r = m.nudge(code, other.playerId);
+    expect(r.targetId).toBe(current.playerId);
+    expect(r.fromName).toBe(m.stateFor(code, other.playerId).room.members.find((x) => x.id === other.playerId)!.name);
+  });
+
+  it('refuses to nudge yourself, outside a turn, or without a game', () => {
+    const { m, code, current } = inTurnPhase(() => 0);
+    expect(() => m.nudge(code, current.playerId)).toThrow('Du bist selbst dran');
+    const lobbyOnly = lobby(['Anna', 'Ben']);
+    expect(() => lobbyOnly.m.nudge(lobbyOnly.code, lobbyOnly.rest[0].playerId)).toThrow('Gerade nicht möglich');
+  });
+
+  it('allows one nudge per room every 10 seconds', () => {
+    let t = 0;
+    const { m, code, other } = inTurnPhase(() => t);
+    m.nudge(code, other.playerId);
+    expect(() => m.nudge(code, other.playerId)).toThrow('Bitte kurz warten');
+    t = 10_001;
+    expect(m.nudge(code, other.playerId).targetId).toBeTruthy();
+  });
+});

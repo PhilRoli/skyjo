@@ -133,6 +133,11 @@ export function createSkyjoServer(
       attach(r.code, r.playerId);
       return r;
     });
+    on('room:settings', ({ target }) => {
+      const s = session();
+      manager.setTarget(s.code, s.playerId, target);
+      broadcast(s.code);
+    });
     on('game:start', () => {
       const s = session();
       manager.start(s.code, s.playerId);
@@ -142,6 +147,11 @@ export function createSkyjoServer(
       const s = session();
       manager.act(s.code, s.playerId, action);
       broadcast(s.code);
+    });
+    on('game:nudge', () => {
+      const s = session();
+      const r = manager.nudge(s.code, s.playerId);
+      io.to(personal(s.code, r.targetId)).emit('nudged', { from: r.fromName });
     });
     on('game:next', () => {
       const s = session();

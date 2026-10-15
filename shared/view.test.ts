@@ -41,4 +41,8 @@ describe('viewFor', () => {
     expect(viewFor(s, 'B').events).toEqual([{ kind: 'draw', by: 'A' }]);
     expect(viewFor(s, 'B').eventSeq).toBe(7);
   });
+
+  it('exposes the target score', () => {
+    expect(viewFor({ ...base(), target: 50 }, 'A').target).toBe(50);
+  });
 });

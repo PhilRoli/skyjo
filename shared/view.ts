@@ -21,12 +21,14 @@ export interface PlayerView {
   winners: string[];
   events: GameEvent[];
   eventSeq: number;
+  target: number;
 }
 
 export interface RoomInfo {
   code: string;
   hostId: string;
   started: boolean;
+  target: number;
   members: { id: string; name: string; connected: boolean; left: boolean }[];
 }
 
@@ -62,5 +64,6 @@ export function viewFor(state: GameState, me: string): PlayerView {
     winners: state.phase === 'gameOver' ? winners(state) : [],
     events: state.events,
     eventSeq: state.eventSeq,
+    target: state.target,
   };
 }

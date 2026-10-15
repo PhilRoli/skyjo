@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
@@ -16,12 +16,13 @@ interface Props {
   state: ClientState;
   act: (a: Action) => void;
   remove: (id: string) => void;
+  nudge: () => void;
   next: () => void;
   rematch: () => void;
   leave: () => void;
 }
 
-export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
+export function GameTable({ state, act, remove, nudge, next, rematch, leave }: Props) {
   const g = state.game!;
   const isHost = state.room.hostId === state.me;
   const me = g.players.find((p) => p.id === g.me)!;
@@ -30,6 +31,13 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
   const myUp = me.grid.filter((c) => c?.up).length;
   const nameOf = (id: string | null) => g.players.find((p) => p.id === id)?.name ?? '';
   const over = g.phase === 'roundOver' || g.phase === 'gameOver';
+  const [nudgeCooling, setNudgeCooling] = useState(false);
+  const canNudge = !myTurn && g.current !== null && !over;
+  const nudgeNow = () => {
+    nudge();
+    setNudgeCooling(true);
+    setTimeout(() => setNudgeCooling(false), 10_000);
+  };
   const eventLine = describeEvents(g.events, nameOf);
   const clearedBy = (id: string) => g.events.filter((e) => e.kind === 'clear' && e.by === id).map((e) => (e as { column: number }).column);
 
@@ -84,6 +92,14 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
       <Box sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: 'background.default', py: 1 }}>
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
           {over ? (g.phase === 'gameOver' ? 'Spiel beendet' : `Runde ${g.round} beendet`) : hint}
+          <Typography component="span" variant="caption" sx={{ ml: 1, fontWeight: 400, opacity: 0.7 }}>
+            Ziel {g.target}
+          </Typography>
+          {canNudge && (
+            <Button size="small" sx={{ ml: 1 }} disabled={nudgeCooling} onClick={nudgeNow}>
+              Anstupsen
+            </Button>
+          )}
         </Typography>
         {eventLine && (
           <Typography variant="body2" sx={{ opacity: 0.8 }}>
@@ -101,7 +117,7 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
                 {p.name}
               </Typography>
               <Typography variant="caption" component="div" sx={{ mb: 0.5 }}>
-                Runde <b>{visibleSum(p.grid)}</b> · Gesamt {p.total}
+                Aktuell <b>{visibleSum(p.grid)}</b> · Gesamt {p.total}
               </Typography>
               {p.left ? (
                 <Typography variant="caption">ausgeschieden</Typography>
@@ -152,7 +168,7 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
       <Paper sx={{ p: 2, outline: myTurn ? '2px solid #ff9800' : 'none', alignSelf: 'center' }}>
         <Typography sx={{ fontWeight: 700 }}>{me.name}</Typography>
         <Typography variant="body2" component="div" sx={{ mb: 1 }}>
-          Runde <b>{visibleSum(me.grid)}</b> · Gesamt {me.total}
+          Aktuell <b>{visibleSum(me.grid)}</b> · Gesamt {me.total}
         </Typography>
         <GridView grid={me.grid} canClick={clickable} onSlot={onSlot} pulseColumns={clearedBy(me.id)} pulseKey={g.eventSeq} />
       </Paper>
