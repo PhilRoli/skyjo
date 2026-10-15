@@ -49,12 +49,17 @@ export function createSkyjoServer(opts: { manager?: RoomManager; staticDir?: str
     };
 
     const on = (event: string, handler: (payload: any) => object | void) => {
-      socket.on(event, (payload: unknown, ack?: Ack) => {
+      socket.on(event, (payload: unknown, rawAck?: unknown) => {
+        const ack = typeof rawAck === 'function' ? (rawAck as Ack) : undefined;
         try {
           const extra = handler(payload ?? {}) ?? {};
           ack?.({ ok: true, ...extra });
         } catch (e) {
-          ack?.({ ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler' });
+          try {
+            ack?.({ ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler' });
+          } catch {
+            /* a broken ack must never take the process down */
+          }
         }
       });
     };
@@ -97,6 +102,18 @@ export function createSkyjoServer(opts: { manager?: RoomManager; staticDir?: str
     on('room:remove', ({ targetId }) => {
       const s = session();
       manager.remove(s.code, s.playerId, targetId);
+      const target = personal(s.code, targetId);
+      io.to(target).emit('kicked');
+      io.in(target).socketsLeave([s.code, target]);
+      broadcast(s.code);
+    });
+    on('room:leave', () => {
+      const s = session();
+      manager.leave(s.code, s.playerId);
+      socket.leave(s.code);
+      socket.leave(personal(s.code, s.playerId));
+      data.code = undefined;
+      data.playerId = undefined;
       broadcast(s.code);
     });
 

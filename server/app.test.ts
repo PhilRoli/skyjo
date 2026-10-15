@@ -127,3 +127,32 @@ describe('socket server', () => {
     expect(a.state?.room.members.find((m) => m.id === joined.playerId)?.connected).toBe(true);
   });
 });
+
+describe('robustness and leaving', () => {
+  it('survives a client that sends a non-function ack', async () => {
+    const a = client();
+    a.socket.emit('room:create', { name: 'Anna' }, 'junk');
+    a.socket.emit('room:create', { name: 'Anna' }, 42);
+    await new Promise((r) => setTimeout(r, 150));
+    const b = client();
+    expect((await b.request('room:create', { name: 'Ben' })).ok).toBe(true);
+  });
+
+  it('room:leave removes the player from the room and stops their updates', async () => {
+    const { a, b, created } = await twoPlayers();
+    expect((await b.request('room:leave')).ok).toBe(true);
+    const s = await a.until((x) => x.room.members.length === 1);
+    expect(s.room.members.map((m) => m.name)).toEqual(['Anna']);
+    const c = client();
+    await c.request('room:join', { code: created.code, name: 'Cara' });
+    await a.until((x) => x.room.members.length === 2);
+    expect(b.state?.room.members.length).toBe(2);
+  });
+
+  it('tells a removed player with a kicked event', async () => {
+    const { a, b, joined } = await twoPlayers();
+    const kicked = new Promise<void>((resolve) => b.socket.once('kicked', () => resolve()));
+    expect((await a.request('room:remove', { targetId: joined.playerId })).ok).toBe(true);
+    await kicked;
+  });
+});

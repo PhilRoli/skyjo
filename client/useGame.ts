@@ -31,14 +31,21 @@ export function useGame() {
     };
     const onDisconnect = () => setConnected(false);
     const onState = (s: ClientState) => setState(s);
+    const onKicked = () => {
+      saveSession(null);
+      setState(null);
+      setError('Du wurdest aus dem Raum entfernt');
+    };
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('state', onState);
+    socket.on('kicked', onKicked);
     if (socket.connected) onConnect();
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('state', onState);
+      socket.off('kicked', onKicked);
     };
   }, []);
 
@@ -69,7 +76,12 @@ export function useGame() {
     next: () => run(() => request('game:next')),
     rematch: () => run(() => request('game:rematch')),
     remove: (targetId: string) => run(() => request('room:remove', { targetId })),
-    leave: () => {
+    leave: async () => {
+      try {
+        await request('room:leave');
+      } catch {
+        /* already gone on the server: leaving locally is still right */
+      }
       saveSession(null);
       setState(null);
     },

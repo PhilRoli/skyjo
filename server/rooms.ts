@@ -161,11 +161,35 @@ export class RoomManager {
     this.touch(room);
   }
 
+  leave(code: string, playerId: string): void {
+    const room = this.room(code);
+    const member = this.member(room, playerId);
+    if (room.game) {
+      room.game = removePlayer(room.game, playerId);
+      member.connected = false;
+    } else {
+      room.members = room.members.filter((m) => m.id !== playerId);
+    }
+    const remaining = room.members.filter((m) => m.id !== playerId && !this.isLeft(room, m.id));
+    if (remaining.length === 0) {
+      this.rooms.delete(room.code);
+      return;
+    }
+    if (room.hostId === playerId) {
+      room.hostId = (remaining.find((m) => m.connected) ?? remaining[0]).id;
+    }
+    this.touch(room);
+  }
+
   setConnected(code: string, playerId: string, connected: boolean): void {
     const room = this.rooms.get(normalizeCode(code));
     const member = room?.members.find((m) => m.id === playerId);
     if (!room || !member) return;
     member.connected = connected;
+    if (connected) {
+      const host = room.members.find((m) => m.id === room.hostId);
+      if (!host || !host.connected || this.isLeft(room, host.id)) room.hostId = playerId;
+    }
     if (!connected && room.hostId === playerId) {
       const next = room.members.find(
         (m) => m.connected && m.id !== playerId && !this.isLeft(room, m.id),

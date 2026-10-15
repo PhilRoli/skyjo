@@ -141,3 +141,47 @@ describe('sweep', () => {
     expect(m.sweep()).toBe(0);
   });
 });
+
+describe('host reassignment on reconnect', () => {
+  it('gives the host role to a returning player when the current host is offline', () => {
+    const { m, code, host, rest } = lobby(['Anna', 'Ben']);
+    m.setConnected(code, host.playerId, false);
+    expect(m.stateFor(code, rest[0].playerId).room.hostId).toBe(rest[0].playerId);
+    m.setConnected(code, rest[0].playerId, false);
+    m.setConnected(code, host.playerId, true);
+    expect(m.stateFor(code, host.playerId).room.hostId).toBe(host.playerId);
+  });
+});
+
+describe('leave', () => {
+  it('removes a lobby member and passes the host role on', () => {
+    const { m, code, host, rest } = lobby(['Anna', 'Ben']);
+    m.leave(code, host.playerId);
+    const s = m.stateFor(code, rest[0].playerId);
+    expect(s.room.members.map((x) => x.name)).toEqual(['Ben']);
+    expect(s.room.hostId).toBe(rest[0].playerId);
+  });
+
+  it('deletes the room when the last member leaves', () => {
+    const { m, code, host } = lobby(['Anna']);
+    m.leave(code, host.playerId);
+    expect(() => m.stateFor(code, host.playerId)).toThrow('Raum nicht gefunden');
+  });
+
+  it('marks a player in a running game as left, passes the host role and blocks rejoin', () => {
+    const { m, code, host, rest } = lobby(['Anna', 'Ben', 'Cara']);
+    m.start(code, host.playerId);
+    m.leave(code, host.playerId);
+    const s = m.stateFor(code, rest[0].playerId);
+    expect(s.room.hostId).toBe(rest[0].playerId);
+    expect(s.game?.players.find((p) => p.id === host.playerId)?.left).toBe(true);
+    expect(() => m.rejoin(code, host.token)).toThrow('Du wurdest aus dem Spiel genommen');
+  });
+
+  it('ends the game when only one player is left', () => {
+    const { m, code, host, rest } = lobby(['Anna', 'Ben']);
+    m.start(code, host.playerId);
+    m.leave(code, rest[0].playerId);
+    expect(m.stateFor(code, host.playerId).game?.phase).toBe('gameOver');
+  });
+});
