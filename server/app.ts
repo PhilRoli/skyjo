@@ -8,6 +8,9 @@ import { RoomManager } from './rooms';
 type Ack = (res: { ok: true; [k: string]: unknown } | { ok: false; error: string }) => void;
 type SocketData = { code?: string; playerId?: string };
 
+const CREATE_LIMIT = 5;
+const CREATE_WINDOW_MS = 60_000;
+
 export function createSkyjoServer(opts: { manager?: RoomManager; staticDir?: string } = {}) {
   const manager = opts.manager ?? new RoomManager();
   const app = express();
@@ -34,7 +37,20 @@ export function createSkyjoServer(opts: { manager?: RoomManager; staticDir?: str
   io.on('connection', (socket) => {
     const data = socket.data as SocketData;
 
+    const release = (code: string, playerId: string) => {
+      const size = io.sockets.adapter.rooms.get(personal(code, playerId))?.size ?? 0;
+      if (size > 0) return;
+      manager.setConnected(code, playerId, false);
+      broadcast(code);
+    };
+
     const attach = (code: string, playerId: string) => {
+      const prev = { code: data.code, playerId: data.playerId };
+      if (prev.code && prev.playerId && (prev.code !== code || prev.playerId !== playerId)) {
+        socket.leave(prev.code);
+        socket.leave(personal(prev.code, prev.playerId));
+        release(prev.code, prev.playerId);
+      }
       data.code = code;
       data.playerId = playerId;
       socket.join(code);
@@ -64,7 +80,12 @@ export function createSkyjoServer(opts: { manager?: RoomManager; staticDir?: str
       });
     };
 
+    const createdAt: number[] = [];
     on('room:create', ({ name }) => {
+      const now = Date.now();
+      while (createdAt.length && now - createdAt[0] > CREATE_WINDOW_MS) createdAt.shift();
+      if (createdAt.length >= CREATE_LIMIT) throw new Error('Zu viele Räume erstellt');
+      createdAt.push(now);
       const r = manager.create(name);
       attach(r.code, r.playerId);
       return r;
@@ -119,10 +140,7 @@ export function createSkyjoServer(opts: { manager?: RoomManager; staticDir?: str
 
     socket.on('disconnect', () => {
       if (!data.code || !data.playerId) return;
-      const size = io.sockets.adapter.rooms.get(personal(data.code, data.playerId))?.size ?? 0;
-      if (size > 0) return;
-      manager.setConnected(data.code, data.playerId, false);
-      broadcast(data.code);
+      release(data.code, data.playerId);
     });
   });
 

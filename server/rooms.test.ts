@@ -126,6 +126,7 @@ describe('sweep', () => {
     let t = 0;
     const m = new RoomManager(seeded(1), () => t);
     const h = m.create('Anna');
+    m.setConnected(h.code, h.playerId, false);
     t = 3 * 3600 * 1000;
     expect(m.sweep()).toBe(1);
     expect(() => m.stateFor(h.code, h.playerId)).toThrow('Raum nicht gefunden');
@@ -183,5 +184,29 @@ describe('leave', () => {
     m.start(code, host.playerId);
     m.leave(code, rest[0].playerId);
     expect(m.stateFor(code, host.playerId).game?.phase).toBe('gameOver');
+  });
+});
+
+describe('minors', () => {
+  it('sweep keeps idle rooms while a member is still connected', () => {
+    let t = 0;
+    const m = new RoomManager(seeded(1), () => t);
+    m.create('Anna');
+    t = 5 * 3600 * 1000;
+    expect(m.sweep()).toBe(0);
+  });
+
+  it('points to the rematch when the next round is requested after the game ended', () => {
+    const { m, code, host, rest } = lobby(['Anna', 'Ben']);
+    m.start(code, host.playerId);
+    m.leave(code, rest[0].playerId);
+    expect(() => m.next(code, host.playerId)).toThrow('Revanche');
+  });
+
+  it('caps the number of rooms', () => {
+    const m = new RoomManager(seeded(1), () => 0, 2);
+    m.create('A');
+    m.create('B');
+    expect(() => m.create('C')).toThrow('Server ausgelastet');
   });
 });

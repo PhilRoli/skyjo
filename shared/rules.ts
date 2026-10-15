@@ -41,6 +41,7 @@ export function newGame(members: { id: string; name: string }[], rng: Rng): Game
 }
 
 export function startRound(prev: GameState, rng: Rng): GameState {
+  if (prev.phase === 'gameOver') throw new Error('Das Spiel ist beendet, starte eine Revanche');
   if (prev.round > 0 && prev.phase !== 'roundOver') throw new Error('Runde läuft noch');
   const state = structuredClone(prev);
   const deck = shuffle(buildDeck(), rng);

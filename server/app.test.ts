@@ -156,3 +156,22 @@ describe('robustness and leaving', () => {
     await kicked;
   });
 });
+
+describe('session handling per socket', () => {
+  it('a second room event detaches the previous session', async () => {
+    const { a, b, created } = await twoPlayers();
+    await b.until((s) => s.room.members.length === 2);
+    const second = await a.request('room:create', { name: 'Anna2' });
+    expect(second.ok).toBe(true);
+    const s = await b.until((x) => x.room.members.find((m) => m.id === created.playerId)?.connected === false);
+    expect(s.room.code).toBe(created.code);
+  });
+
+  it('rate limits room creation per socket', async () => {
+    const a = client();
+    const results: boolean[] = [];
+    for (let i = 0; i < 6; i++) results.push((await a.request('room:create', { name: `P${i}` })).ok);
+    expect(results).toEqual([true, true, true, true, true, false]);
+    expect((await a.request('room:create', { name: 'again' })).error).toBe('Zu viele Räume erstellt');
+  });
+});
