@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { apply, newGame, removePlayer, startRound } from '../shared/rules';
-import { ALLOWED_TARGETS, DEFAULT_TARGET, MAX_PLAYERS, type Action, type GameState, type Rng } from '../shared/types';
-import { viewFor, type ClientState } from '../shared/view';
+import { ALLOWED_TARGETS, BOT_LEVELS, DEFAULT_TARGET, MAX_PLAYERS, type Action, type BotLevel, type GameState, type Rng } from '../shared/types';
+import { viewFor, type ClientState, type PlayerView } from '../shared/view';
 
 const MAX_NAME = 16;
 const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
 const HOST_GRACE_MS = 30_000;
 const MAX_SPECTATORS = 20;
+const BOT_NAMES = ['Nova', 'Pixel', 'Byte', 'Echo', 'Luna', 'Zed', 'Robo', 'Max'];
 const NUDGE_COOLDOWN_MS = 10_000;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -17,6 +18,7 @@ interface Member {
   connected: boolean;
   spectator?: boolean;
   wantsToPlay?: boolean;
+  bot?: { level: BotLevel };
 }
 
 interface Room {
@@ -52,6 +54,7 @@ function cleanName(name: unknown): string {
 export class RoomManager {
   private rooms = new Map<string, Room>();
   onChange?: () => void;
+  onRoomChange?: (code: string) => void;
 
   constructor(
     private rng: Rng = Math.random,
@@ -75,6 +78,10 @@ export class RoomManager {
     return room.members.filter((m) => !m.spectator);
   }
 
+  private humans(room: Room): Member[] {
+    return room.members.filter((m) => !m.spectator && !m.bot);
+  }
+
   private requirePlayer(room: Room, playerId: string): Member {
     const m = this.member(room, playerId);
     if (m.spectator) throw new Error('Zuschauer können nicht spielen');
@@ -93,6 +100,11 @@ export class RoomManager {
   private touch(room: Room): void {
     room.lastActivity = this.now();
     this.onChange?.();
+    try {
+      this.onRoomChange?.(room.code);
+    } catch (e) {
+      console.error('room change hook failed', e);
+    }
   }
 
   private newCode(): string {
@@ -150,7 +162,7 @@ export class RoomManager {
 
   rejoin(code: string, token: string) {
     const room = this.room(code);
-    const member = room.members.find((m) => m.token === token);
+    const member = room.members.find((m) => !m.bot && m.token === token);
     if (!member) throw new Error('Sitzung abgelaufen');
     if (this.isLeft(room, member.id)) throw new Error('Du wurdest aus dem Spiel genommen');
     this.setConnected(room.code, member.id, true);
@@ -181,6 +193,7 @@ export class RoomManager {
     if (!game || !turnPhase) throw new Error('Gerade nicht möglich');
     const target = game.players[game.current];
     if (target.id === playerId) throw new Error('Du bist selbst dran');
+    if (room.members.find((m) => m.id === target.id)?.bot) throw new Error('Bots muss man nicht anstupsen');
     if (room.lastNudgeAt !== undefined && this.now() - room.lastNudgeAt < NUDGE_COOLDOWN_MS) {
       throw new Error('Bitte kurz warten');
     }
@@ -197,6 +210,26 @@ export class RoomManager {
     }
     room.target = target;
     this.touch(room);
+  }
+
+  addBot(code: string, playerId: string, level: unknown): string {
+    const room = this.room(code);
+    this.requireHost(room, playerId);
+    if (room.game) throw new Error('Das Spiel läuft bereits');
+    if (!BOT_LEVELS.includes(level as BotLevel)) throw new Error('Ungültige Bot-Stufe');
+    if (this.players(room).length >= MAX_PLAYERS) throw new Error('Raum ist voll');
+    const taken = new Set(room.members.map((m) => m.name.toLowerCase()));
+    const name = BOT_NAMES.find((n) => !taken.has(n.toLowerCase())) ?? `Bot ${room.members.length + 1}`;
+    const bot: Member = {
+      id: `bot-${randomUUID().slice(0, 6)}`,
+      name,
+      token: '',
+      connected: true,
+      bot: { level: level as BotLevel },
+    };
+    room.members.push(bot);
+    this.touch(room);
+    return bot.id;
   }
 
   act(code: string, playerId: string, action: unknown): void {
@@ -264,7 +297,7 @@ export class RoomManager {
     } else {
       room.members = room.members.filter((m) => m.id !== playerId);
     }
-    const remaining = this.players(room).filter((m) => m.id !== playerId && !this.isLeft(room, m.id));
+    const remaining = this.humans(room).filter((m) => m.id !== playerId && !this.isLeft(room, m.id));
     if (remaining.length === 0) {
       const closedFor = room.members.filter((m) => m.spectator).map((m) => m.id);
       this.rooms.delete(room.code);
@@ -291,7 +324,7 @@ export class RoomManager {
   setConnected(code: string, playerId: string, connected: boolean): void {
     const room = this.rooms.get(normalizeCode(code));
     const member = room?.members.find((m) => m.id === playerId);
-    if (!room || !member) return;
+    if (!room || !member || member.bot) return;
     member.connected = connected;
     if (connected && !member.spectator && !(room.hostGraceUntil && this.now() < room.hostGraceUntil)) {
       const host = room.members.find((m) => m.id === room.hostId);
@@ -299,7 +332,7 @@ export class RoomManager {
     }
     if (!connected && room.hostId === playerId) {
       const next = room.members.find(
-        (m) => m.connected && m.id !== playerId && !m.spectator && !this.isLeft(room, m.id),
+        (m) => m.connected && m.id !== playerId && !m.spectator && !m.bot && !this.isLeft(room, m.id),
       );
       if (next) room.hostId = next.id;
     }
@@ -329,6 +362,7 @@ export class RoomManager {
           left: this.isLeft(room, m.id),
           spectator: !!m.spectator,
           wantsToPlay: !!m.wantsToPlay,
+          ...(m.bot ? { bot: { level: m.bot.level } } : {}),
         })),
       },
       game: room.game ? viewFor(room.game, playerId) : null,
@@ -352,18 +386,31 @@ export class RoomManager {
       this.rooms.set(s.code, {
         ...s,
         target: s.target ?? DEFAULT_TARGET,
-        members: s.members.map((m) => ({ ...m, connected: false })),
+        members: s.members.map((m) => ({ ...m, connected: !!m.bot })),
         lastActivity: this.now(),
         hostGraceUntil: this.now() + HOST_GRACE_MS,
       });
     }
   }
 
+  botViews(code: string): { id: string; level: BotLevel; view: PlayerView }[] {
+    const room = this.rooms.get(normalizeCode(code));
+    const game = room?.game;
+    if (!room || !game) return [];
+    return room.members
+      .filter((m) => m.bot && !this.isLeft(room, m.id))
+      .map((m) => ({ id: m.id, level: m.bot!.level, view: viewFor(game, m.id) }));
+  }
+
+  roomCodes(): string[] {
+    return [...this.rooms.keys()];
+  }
+
   sweep(): number {
     let removed = 0;
     for (const [code, room] of this.rooms) {
       const idle = this.now() - room.lastActivity > ROOM_TTL_MS;
-      if (idle && !room.members.some((m) => m.connected)) {
+      if (idle && !room.members.some((m) => !m.bot && m.connected)) {
         this.rooms.delete(code);
         removed++;
       }

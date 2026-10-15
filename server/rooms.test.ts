@@ -474,3 +474,123 @@ describe('play request and rematch', () => {
     expect(m.stateFor(code, host.playerId).room.members.find((x) => x.id === spectator.playerId)?.spectator).toBe(true);
   });
 });
+
+describe('bots', () => {
+  const botOf = (m: RoomManager, code: string, id: string) => m.stateFor(code, id).room.members.find((x) => x.bot);
+
+  it('lets only the host add bots, only in the lobby, with a valid level, up to 8 players', () => {
+    const { m, code, host, rest } = lobby(['Anna', 'Ben']);
+    expect(() => m.addBot(code, rest[0].playerId, 'easy')).toThrow('Nur der Host kann das');
+    expect(() => m.addBot(code, host.playerId, 'godlike')).toThrow('Ungültige Bot-Stufe');
+    for (let i = 0; i < 6; i++) m.addBot(code, host.playerId, 'easy');
+    expect(() => m.addBot(code, host.playerId, 'easy')).toThrow('Raum ist voll');
+    const l2 = lobby(['Anna', 'Ben']);
+    l2.m.addBot(l2.code, l2.host.playerId, 'normal');
+    l2.m.start(l2.code, l2.host.playerId);
+    expect(() => l2.m.addBot(l2.code, l2.host.playerId, 'normal')).toThrow('Das Spiel läuft bereits');
+  });
+
+  it('gives bots unique names from the list and exposes their level', () => {
+    const { m, code, host } = lobby(['Nova']);
+    m.addBot(code, host.playerId, 'easy');
+    m.addBot(code, host.playerId, 'hard');
+    const members = m.stateFor(code, host.playerId).room.members;
+    expect(members.map((x) => x.name)).toEqual(['Nova', 'Pixel', 'Byte']);
+    expect(members[1].bot).toEqual({ level: 'easy' });
+    expect(members[2].bot).toEqual({ level: 'hard' });
+    expect(members[1].id).toMatch(/^bot-/);
+  });
+
+  it('counts bots as players at the start and keeps them connected', () => {
+    const { m, code, host } = lobby(['Anna']);
+    m.addBot(code, host.playerId, 'normal');
+    m.start(code, host.playerId);
+    const st = m.stateFor(code, host.playerId);
+    expect(st.game?.players).toHaveLength(2);
+    expect(botOf(m, code, host.playerId)?.connected).toBe(true);
+    m.setConnected(code, botOf(m, code, host.playerId)!.id, false);
+    expect(botOf(m, code, host.playerId)?.connected).toBe(true);
+  });
+
+  it('cannot be taken over with an empty token', () => {
+    const { m, code, host } = lobby(['Anna']);
+    m.addBot(code, host.playerId, 'easy');
+    expect(() => m.rejoin(code, '')).toThrow('Sitzung abgelaufen');
+  });
+
+  it('never become host, and the room closes when the last human leaves', () => {
+    const { m, code, host, rest } = lobby(['Anna', 'Ben']);
+    m.addBot(code, host.playerId, 'easy');
+    m.setConnected(code, host.playerId, false);
+    expect(m.stateFor(code, rest[0].playerId).room.hostId).toBe(rest[0].playerId);
+    m.setConnected(code, rest[0].playerId, false);
+    expect(m.stateFor(code, rest[0].playerId).room.hostId).toBe(rest[0].playerId);
+    m.leave(code, host.playerId);
+    m.leave(code, rest[0].playerId);
+    expect(() => m.stateFor(code, rest[0].playerId)).toThrow('Raum nicht gefunden');
+  });
+
+  it('sweep ignores bots when deciding whether anyone is connected', () => {
+    let t = 0;
+    const m = new RoomManager(seeded(1), () => t);
+    const h = m.create('Anna');
+    m.addBot(h.code, h.playerId, 'easy');
+    m.setConnected(h.code, h.playerId, false);
+    t = 3 * 3600 * 1000;
+    expect(m.sweep()).toBe(1);
+  });
+
+  it('restore keeps bots connected and marks humans disconnected', () => {
+    const { m, code, host } = lobby(['Anna']);
+    m.addBot(code, host.playerId, 'easy');
+    const m2 = mk();
+    m2.restore(JSON.parse(JSON.stringify(m.snapshot())));
+    const members = m2.stateFor(code, host.playerId).room.members;
+    expect(members.find((x) => x.bot)?.connected).toBe(true);
+    expect(members.find((x) => !x.bot)?.connected).toBe(false);
+  });
+
+  it('refuses to nudge a bot', () => {
+    for (let seed = 1; seed < 60; seed++) {
+      const m = new RoomManager(seeded(seed));
+      const h = m.create('Anna');
+      const botId = m.addBot(h.code, h.playerId, 'easy');
+      m.start(h.code, h.playerId);
+      for (const id of [h.playerId, botId]) {
+        m.act(h.code, id, { type: 'flipInitial', slot: 0 });
+        m.act(h.code, id, { type: 'flipInitial', slot: 1 });
+      }
+      if (m.stateFor(h.code, h.playerId).game!.current === botId) {
+        expect(() => m.nudge(h.code, h.playerId)).toThrow('Bots muss man nicht anstupsen');
+        return;
+      }
+    }
+    throw new Error('no seed made the bot start');
+  });
+
+  it('gives every bot its own view and nothing hidden', () => {
+    const { m, code, host } = lobby(['Anna']);
+    expect(m.botViews(code)).toEqual([]);
+    const botId = m.addBot(code, host.playerId, 'hard');
+    m.start(code, host.playerId);
+    const views = m.botViews(code);
+    expect(views).toHaveLength(1);
+    expect(views[0]).toMatchObject({ id: botId, level: 'hard' });
+    expect(views[0].view.me).toBe(botId);
+    for (const p of views[0].view.players) for (const c of p.grid) if (c && !c.up) expect(c.value).toBeNull();
+    expect(m.botViews('ZZZZ')).toEqual([]);
+    expect(m.roomCodes()).toEqual([code]);
+  });
+
+  it('calls onRoomChange with the room code and survives a throwing hook', () => {
+    const { m, code, host } = lobby(['Anna']);
+    const seen: string[] = [];
+    m.onRoomChange = (c) => seen.push(c);
+    m.addBot(code, host.playerId, 'easy');
+    expect(seen).toEqual([code]);
+    m.onRoomChange = () => {
+      throw new Error('boom');
+    };
+    expect(() => m.addBot(code, host.playerId, 'easy')).not.toThrow();
+  });
+});

@@ -1,5 +1,5 @@
 import { winners } from './rules';
-import type { GameEvent, GameState, Phase, RoundResult } from './types';
+import type { BotLevel, GameEvent, GameState, Phase, RoundResult } from './types';
 
 export interface PublicCell {
   up: boolean;
@@ -37,6 +37,7 @@ export interface RoomInfo {
     left: boolean;
     spectator: boolean;
     wantsToPlay: boolean;
+    bot?: { level: BotLevel };
   }[];
 }
 
