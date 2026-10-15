@@ -1,9 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { describeEvents } from '../../shared/events';
 import { visibleSum } from '../../shared/score';
 import type { Action } from '../../shared/types';
@@ -16,20 +18,31 @@ interface Props {
   state: ClientState;
   act: (a: Action) => void;
   remove: (id: string) => void;
+  nudge: () => void;
   next: () => void;
   rematch: () => void;
+  play: () => void;
   leave: () => void;
 }
 
-export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
+export function GameTable({ state, act, remove, nudge, next, rematch, play, leave }: Props) {
   const g = state.game!;
   const isHost = state.room.hostId === state.me;
-  const me = g.players.find((p) => p.id === g.me)!;
+  const spectator = state.role === 'spectator';
+  const me = g.players.find((p) => p.id === g.me); // undefined for spectators
   const others = g.players.filter((p) => p.id !== g.me);
-  const myTurn = g.current === g.me;
-  const myUp = me.grid.filter((c) => c?.up).length;
+  const myTurn = !spectator && g.current === g.me;
+  const myUp = me ? me.grid.filter((c) => c?.up).length : 2;
   const nameOf = (id: string | null) => g.players.find((p) => p.id === id)?.name ?? '';
   const over = g.phase === 'roundOver' || g.phase === 'gameOver';
+  const [nudgeCooling, setNudgeCooling] = useState(false);
+  const isBot = (id: string | null) => !!state.room.members.find((m) => m.id === id)?.bot;
+  const canNudge = !spectator && !myTurn && g.current !== null && !over && !isBot(g.current);
+  const nudgeNow = () => {
+    nudge();
+    setNudgeCooling(true);
+    setTimeout(() => setNudgeCooling(false), 10_000);
+  };
   const eventLine = describeEvents(g.events, nameOf);
   const clearedBy = (id: string) => g.events.filter((e) => e.kind === 'clear' && e.by === id).map((e) => (e as { column: number }).column);
 
@@ -50,7 +63,7 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
   let hint = '';
   let clickable: (i: number) => boolean = () => false;
   let onSlot: (i: number) => void = () => {};
-  const hidden = (i: number) => me.grid[i] !== null && !me.grid[i]!.up;
+  const hidden = (i: number) => !!me && me.grid[i] !== null && !me.grid[i]!.up;
   switch (g.phase) {
     case 'initialFlip':
       hint = myUp < 2 ? `Decke 2 Karten auf (${myUp}/2)` : 'Warte auf die anderen';
@@ -66,7 +79,7 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
           ? 'Tauschen oder ablegen'
           : 'Karte tauschen'
         : `${nameOf(g.current)} ist dran`;
-      clickable = (i) => myTurn && me.grid[i] !== null;
+      clickable = (i) => myTurn && !!me && me.grid[i] !== null;
       onSlot = (slot) => act({ type: 'swap', slot });
       break;
     case 'flipAfterDiscard':
@@ -76,6 +89,7 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
       break;
   }
   if (g.finisher && !over) hint += ` · ${nameOf(g.finisher)}: letzte Runde`;
+  if (spectator) hint = g.current ? `${nameOf(g.current)} ist dran` : 'Du schaust zu';
 
   const canDraw = myTurn && g.phase === 'draw';
 
@@ -84,6 +98,25 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
       <Box sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: 'background.default', py: 1 }}>
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
           {over ? (g.phase === 'gameOver' ? 'Spiel beendet' : `Runde ${g.round} beendet`) : hint}
+          <Typography component="span" variant="caption" sx={{ ml: 1, fontWeight: 400, opacity: 0.7 }}>
+            Ziel {g.target}
+          </Typography>
+          {state.room.spectatorCount > 0 && (
+            <Typography component="span" variant="caption" sx={{ ml: 1, fontWeight: 400, opacity: 0.7 }}>
+              <VisibilityIcon sx={{ fontSize: 14, verticalAlign: 'text-bottom', mr: 0.25 }} />
+              {state.room.spectatorCount}
+            </Typography>
+          )}
+          {spectator && (
+            <Button size="small" color="inherit" sx={{ ml: 1 }} onClick={leave}>
+              Verlassen
+            </Button>
+          )}
+          {canNudge && (
+            <Button size="small" sx={{ ml: 1 }} disabled={nudgeCooling} onClick={nudgeNow}>
+              Anstupsen
+            </Button>
+          )}
         </Typography>
         {eventLine && (
           <Typography variant="body2" sx={{ opacity: 0.8 }}>
@@ -98,10 +131,11 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
           return (
             <Paper key={p.id} sx={{ p: 1, outline: g.current === p.id ? '2px solid #ff9800' : 'none' }}>
               <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                {p.name} · {p.total}
-                <Typography component="span" variant="caption" sx={{ ml: 0.5, opacity: 0.7 }}>
-                  (Runde {visibleSum(p.grid)})
-                </Typography>
+                {member?.bot && <SmartToyIcon sx={{ fontSize: 14, verticalAlign: 'text-bottom', mr: 0.5 }} />}
+                {p.name}
+              </Typography>
+              <Typography variant="caption" component="div" sx={{ mb: 0.5 }}>
+                Aktuell <b>{visibleSum(p.grid)}</b> · Gesamt {p.total}
               </Typography>
               {p.left ? (
                 <Typography variant="caption">ausgeschieden</Typography>
@@ -149,17 +183,29 @@ export function GameTable({ state, act, remove, next, rematch, leave }: Props) {
         )}
       </Stack>
 
-      <Paper sx={{ p: 2, outline: myTurn ? '2px solid #ff9800' : 'none', alignSelf: 'center' }}>
-        <Typography sx={{ fontWeight: 700, mb: 1 }}>
-          {me.name} · {me.total}
-          <Typography component="span" variant="caption" sx={{ ml: 0.5, opacity: 0.7 }}>
-            (Runde {visibleSum(me.grid)})
+      {me && (
+        <Paper sx={{ p: 2, outline: myTurn ? '2px solid #ff9800' : 'none', alignSelf: 'center' }}>
+          <Typography sx={{ fontWeight: 700 }}>{me.name}</Typography>
+          <Typography variant="body2" component="div" sx={{ mb: 1 }}>
+            Aktuell <b>{visibleSum(me.grid)}</b> · Gesamt {me.total}
           </Typography>
-        </Typography>
-        <GridView grid={me.grid} canClick={clickable} onSlot={onSlot} pulseColumns={clearedBy(me.id)} pulseKey={g.eventSeq} />
-      </Paper>
+          <GridView grid={me.grid} canClick={clickable} onSlot={onSlot} pulseColumns={clearedBy(me.id)} pulseKey={g.eventSeq} />
+        </Paper>
+      )}
 
-      {over && <Scoreboard game={g} isHost={isHost} next={next} rematch={rematch} leave={leave} />}
+      {over && (
+        <Scoreboard
+          game={g}
+          isHost={isHost}
+          spectator={spectator}
+          wantsToPlay={!!state.room.members.find((m) => m.id === state.me)?.wantsToPlay}
+          playRequests={state.room.members.filter((m) => m.spectator && m.wantsToPlay).length}
+          next={next}
+          rematch={rematch}
+          play={play}
+          leave={leave}
+        />
+      )}
       <div ref={endRef} />
     </Stack>
   );

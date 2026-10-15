@@ -382,3 +382,25 @@ describe('turn events', () => {
     expect(s.eventSeq).toBe(0);
   });
 });
+
+describe('target score', () => {
+  const finish = (target: number, bTotal: number) => {
+    const s = mkState(
+      [cells([...Array(9).fill(null), 0, 0, 1]), cells(FILL, [0])],
+      { phase: 'flipAfterDiscard', current: 1, finisher: 'A', pendingFinal: ['B'], target },
+    );
+    s.players[1].total = bTotal;
+    return act(s, 'B', { type: 'flipHidden', slot: 0 });
+  };
+
+  it('ends the game when a total exceeds the configured target', () => {
+    expect(finish(50, 30).phase).toBe('gameOver');
+    expect(finish(50, 26).phase).toBe('roundOver');
+    expect(finish(150, 100).phase).toBe('roundOver');
+  });
+
+  it('newGame uses the given target and defaults to 100', () => {
+    expect(newGame(two, seeded(1), 50).target).toBe(50);
+    expect(newGame(two, seeded(1)).target).toBe(100);
+  });
+});

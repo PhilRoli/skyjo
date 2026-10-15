@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="96 128 320 320">
+  <g transform="translate(256 262)">
+    <rect x="-70" y="-100" width="140" height="200" rx="18" fill="#43a047" transform="rotate(-18 0 0) translate(-62 6)"/>
+    <rect x="-70" y="-100" width="140" height="200" rx="18" fill="#fdd835" transform="rotate(14 0 0) translate(62 4)"/>
+    <rect x="-70" y="-100" width="140" height="200" rx="18" fill="#e53935"/>
+    <text x="0" y="40" font-family="Helvetica, Arial, sans-serif" font-weight="800" font-size="130" fill="#ffffff" text-anchor="middle">S</text>
+  </g>
+</svg>

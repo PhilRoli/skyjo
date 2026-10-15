@@ -35,6 +35,7 @@ export function mkState(grids: Cell[][], extra: Partial<GameState> = {}): GameSt
     lastRound: null,
     events: [],
     eventSeq: 0,
+    target: 100,
     ...extra,
   };
 }

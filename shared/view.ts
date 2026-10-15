@@ -1,5 +1,5 @@
 import { winners } from './rules';
-import type { GameEvent, GameState, Phase, RoundResult } from './types';
+import type { BotLevel, GameEvent, GameState, Phase, RoundResult } from './types';
 
 export interface PublicCell {
   up: boolean;
@@ -21,17 +21,29 @@ export interface PlayerView {
   winners: string[];
   events: GameEvent[];
   eventSeq: number;
+  target: number;
 }
 
 export interface RoomInfo {
   code: string;
   hostId: string;
   started: boolean;
-  members: { id: string; name: string; connected: boolean; left: boolean }[];
+  target: number;
+  spectatorCount: number;
+  members: {
+    id: string;
+    name: string;
+    connected: boolean;
+    left: boolean;
+    spectator: boolean;
+    wantsToPlay: boolean;
+    bot?: { level: BotLevel };
+  }[];
 }
 
 export interface ClientState {
   me: string;
+  role: 'player' | 'spectator';
   room: RoomInfo;
   game: PlayerView | null;
 }
@@ -62,5 +74,6 @@ export function viewFor(state: GameState, me: string): PlayerView {
     winners: state.phase === 'gameOver' ? winners(state) : [],
     events: state.events,
     eventSeq: state.eventSeq,
+    target: state.target,
   };
 }

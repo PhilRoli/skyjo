@@ -4,7 +4,10 @@ export type Rng = () => number;
 export const GRID_SIZE = 12;
 export const COLUMNS = 4;
 export const ROWS = 3;
-export const WIN_THRESHOLD = 100;
+export const DEFAULT_TARGET = 100;
+export type BotLevel = 'easy' | 'normal' | 'hard';
+export const BOT_LEVELS: BotLevel[] = ['easy', 'normal', 'hard'];
+export const ALLOWED_TARGETS = [50, 100, 150];
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 8;
 
@@ -53,6 +56,8 @@ export interface GameState {
   lastRound: RoundResult | null;
   events: GameEvent[];
   eventSeq: number;
+  /** The game ends once a total exceeds this value. */
+  target: number;
 }
 
 export type Action =

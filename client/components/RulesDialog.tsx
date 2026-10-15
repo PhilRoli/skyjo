@@ -7,12 +7,15 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import CloseIcon from '@mui/icons-material/Close';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutlined';
+import AnimationIcon from '@mui/icons-material/Animation';
+import MotionPhotosOffIcon from '@mui/icons-material/MotionPhotosOff';
+import { useAnimations } from '../animations';
 import { CardView } from './CardView';
 
 const SECTIONS: { title: string; items: string[] }[] = [
   {
     title: 'Ziel',
-    items: ['Am Ende möglichst wenig Punkte sammeln. Das Spiel endet, sobald jemand über 100 Punkte hat. Wer dann die wenigsten hat, gewinnt.'],
+    items: ['Am Ende möglichst wenig Punkte sammeln. Das Spiel endet, sobald jemand über dem Zielwert liegt (Standard 100, der Host kann 50 oder 150 wählen). Wer dann die wenigsten hat, gewinnt.'],
   },
   {
     title: 'Dein Zug',
@@ -92,5 +95,14 @@ export function RulesButton() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+export function AnimationsToggle() {
+  const { enabled, toggle } = useAnimations();
+  return (
+    <IconButton aria-label={enabled ? 'Animationen ausschalten' : 'Animationen einschalten'} onClick={toggle}>
+      {enabled ? <AnimationIcon /> : <MotionPhotosOffIcon />}
+    </IconButton>
   );
 }

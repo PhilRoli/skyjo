@@ -1,4 +1,7 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { io as connect, type Socket } from 'socket.io-client';
 import { createSkyjoServer } from './app';
@@ -13,7 +16,7 @@ const sockets: Socket[] = [];
 const serverOpts: { maxSocketsPerIp?: number } = {};
 
 beforeEach(async () => {
-  server = createSkyjoServer({ manager: new RoomManager(seeded(7)), ...serverOpts });
+  server = createSkyjoServer({ manager: new RoomManager(seeded(7)), botDelayMs: 0, ...serverOpts });
   await new Promise<void>((r) => server.httpServer.listen(0, r));
   url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
 });
@@ -95,9 +98,8 @@ describe('socket server', () => {
     const { a, created } = await twoPlayers();
     await a.request('game:start');
     const late = client();
-    expect((await late.request('room:join', { code: created.code, name: 'Cara' })).error).toBe(
-      'Das Spiel läuft bereits',
-    );
+    const joinedLate = await late.request('room:join', { code: created.code, name: 'Cara' });
+    expect(joinedLate.role).toBe('spectator');
     expect((await a.request('game:action', { type: 'drawFromDeck' })).ok).toBe(false);
     expect((await a.request('game:action', {})).error).toBe('Unbekannte Aktion');
     const stranger = client();
@@ -203,7 +205,7 @@ describe('per-IP limits', () => {
   it('disconnects sockets beyond the per-IP maximum and frees slots on disconnect', async () => {
     await new Promise<void>((r) => server.io.close(() => r()));
     serverOpts.maxSocketsPerIp = 2;
-    server = createSkyjoServer({ manager: new RoomManager(seeded(7)), ...serverOpts });
+    server = createSkyjoServer({ manager: new RoomManager(seeded(7)), botDelayMs: 0, ...serverOpts });
     await new Promise<void>((r) => server.httpServer.listen(0, r));
     url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
     const a = client();
@@ -216,5 +218,139 @@ describe('per-IP limits', () => {
     await new Promise((r) => setTimeout(r, 100));
     const d = client();
     expect((await d.request('room:create', { name: 'D' })).ok).toBe(true);
+  });
+});
+
+describe('room settings', () => {
+  it('the host sets the target score and everyone sees it', async () => {
+    const { a, b } = await twoPlayers();
+    expect((await b.request('room:settings', { target: 50 })).error).toBe('Nur der Host kann das');
+    expect((await a.request('room:settings', { target: 50 })).ok).toBe(true);
+    const s = await b.until((x) => x.room.target === 50);
+    expect(s.room.target).toBe(50);
+  });
+});
+
+describe('nudge over sockets', () => {
+  it('delivers a nudged event with the sender name to the player whose turn it is', async () => {
+    const { a, b, joined, created } = await twoPlayers();
+    await a.request('game:start');
+    for (const c of [a, b]) {
+      await c.request('game:action', { type: 'flipInitial', slot: 0 });
+      await c.request('game:action', { type: 'flipInitial', slot: 1 });
+    }
+    const s = await a.until((x) => x.game?.phase === 'draw');
+    const aIsCurrent = s.game!.current === created.playerId;
+    const [current, other, otherName] = aIsCurrent ? [a, b, 'Ben'] : [b, a, 'Anna'];
+    const got = new Promise<{ from: string }>((resolve) => current.socket.once('nudged', resolve));
+    expect((await other.request('game:nudge')).ok).toBe(true);
+    expect((await got).from).toBe(otherName);
+    expect((await current.request('game:nudge')).error).toBe('Du bist selbst dran');
+    expect(joined.playerId).toBeTruthy();
+  });
+});
+
+describe('static files', () => {
+  it('serves the manifest with the right type and falls back to index.html for unknown paths', async () => {
+    await new Promise<void>((r) => server.io.close(() => r()));
+    const dir = mkdtempSync(path.join(tmpdir(), 'skyjo-static-'));
+    writeFileSync(path.join(dir, 'index.html'), '<title>Skyjo</title>');
+    writeFileSync(path.join(dir, 'manifest.webmanifest'), '{"name":"Skyjo"}');
+    server = createSkyjoServer({ manager: new RoomManager(seeded(7)), botDelayMs: 0, staticDir: dir });
+    await new Promise<void>((r) => server.httpServer.listen(0, r));
+    url = `http://localhost:${(server.httpServer.address() as AddressInfo).port}`;
+    const manifest = await fetch(`${url}/manifest.webmanifest`);
+    expect(manifest.headers.get('content-type')).toContain('manifest+json');
+    expect(await (await fetch(`${url}/some/room/path`)).text()).toBe('<title>Skyjo</title>');
+  });
+});
+
+describe('spectators over sockets', () => {
+  async function startedGame() {
+    const base = await twoPlayers();
+    await base.a.request('game:start');
+    return base;
+  }
+
+  it('a late joiner watches without hidden values, cannot act, and players see the count', async () => {
+    const { a, created } = await startedGame();
+    const z = client();
+    const j = await z.request('room:join', { code: created.code, name: 'Zoe' });
+    expect(j.role).toBe('spectator');
+    const s = await z.until((x) => x.game !== null);
+    expect(s.role).toBe('spectator');
+    expect(s.game!.players).toHaveLength(2);
+    for (const p of s.game!.players) for (const c of p.grid) if (c && !c.up) expect(c.value).toBeNull();
+    expect((await z.request('game:action', { type: 'flipInitial', slot: 0 })).error).toBe('Zuschauer können nicht spielen');
+    expect((await z.request('game:nudge')).error).toBe('Zuschauer können nicht spielen');
+    expect((await z.request('room:play')).error).toBe('Gerade nicht möglich');
+    const seenByPlayer = await a.until((x) => x.room.spectatorCount === 1);
+    expect(seenByPlayer.room.members.some((m) => m.spectator)).toBe(true);
+  });
+
+  it('a reload (new socket + token) keeps the spectator role', async () => {
+    const { created } = await startedGame();
+    const z = client();
+    const j = await z.request('room:join', { code: created.code, name: 'Zoe' });
+    z.socket.close();
+    const z2 = client();
+    const r = await z2.request('room:rejoin', { code: created.code, token: j.token });
+    expect(r.role).toBe('spectator');
+    const s = await z2.until((x) => x.game !== null);
+    expect(s.role).toBe('spectator');
+  });
+
+  it('spectators get a kicked event when the last player leaves', async () => {
+    const { a, b, created } = await startedGame();
+    const z = client();
+    await z.request('room:join', { code: created.code, name: 'Zoe' });
+    const kicked = new Promise<void>((resolve) => z.socket.once('kicked', () => resolve()));
+    await b.request('room:leave');
+    await a.request('room:leave');
+    await kicked;
+  });
+});
+
+describe('bots over sockets', () => {
+  it('only the host adds bots with a valid level', async () => {
+    const { a, b } = await twoPlayers();
+    expect((await b.request('room:addBot', { level: 'easy' })).error).toBe('Nur der Host kann das');
+    expect((await a.request('room:addBot', { level: 'godlike' })).error).toBe('Ungültige Bot-Stufe');
+    const ok = await a.request('room:addBot', { level: 'hard' });
+    expect(ok.ok).toBe(true);
+    expect(ok.id).toMatch(/^bot-/);
+    const s = await b.until((x) => x.room.members.some((m) => m.bot));
+    expect(s.room.members.find((m) => m.bot)?.bot).toEqual({ level: 'hard' });
+  });
+
+  it('bots flip their initial cards and take their turns on their own', async () => {
+    const a = client();
+    await a.request('room:create', { name: 'Anna' });
+    const added = await a.request('room:addBot', { level: 'normal' });
+    expect((await a.request('game:start')).ok).toBe(true);
+    const flipped = await a.until((s) => {
+      const bot = s.game?.players.find((p) => p.id === added.id);
+      return (bot?.grid.filter((c) => c?.up).length ?? 0) >= 2;
+    });
+    expect(flipped.game?.players).toHaveLength(2);
+    await a.request('game:action', { type: 'flipInitial', slot: 0 });
+    await a.request('game:action', { type: 'flipInitial', slot: 1 });
+    await a.until((s) => s.game?.phase === 'draw' || s.game?.phase === 'place');
+    // whoever starts: after the human finished a turn the bot moves without any client request
+    let guard = 0;
+    for (;;) {
+      const s = a.state!.game!;
+      if (s.current === a.state!.me && s.phase === 'draw') {
+        await a.request('game:action', { type: 'drawFromDeck' });
+        await a.request('game:action', { type: 'discardDrawn' });
+        await a.request('game:action', {
+          type: 'flipHidden',
+          slot: s.players.find((p) => p.id === s.me)!.grid.findIndex((c) => c && !c.up),
+        });
+      }
+      if (a.state!.game!.events.some((e) => e.by === added.id)) break;
+      if (++guard > 200) throw new Error('the bot never moved');
+      await new Promise((r) => setTimeout(r, 15));
+    }
   });
 });
