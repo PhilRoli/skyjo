@@ -18,6 +18,8 @@ interface Props {
   onClick?: () => void;
   highlight?: boolean;
   pulse?: boolean;
+  /** Dev mode: value of a face-down card, shown faded. */
+  peek?: number | null;
 }
 
 const KEYFRAMES = {
@@ -35,7 +37,7 @@ const KEYFRAMES = {
   },
 } as const;
 
-export function CardView({ cell, size = 'normal', onClick, highlight, pulse }: Props) {
+export function CardView({ cell, size = 'normal', onClick, highlight, pulse, peek }: Props) {
   const { enabled } = useAnimations();
   const prev = useRef(cell);
   const [anim, setAnim] = useState<'flip' | 'pop' | null>(null);
@@ -89,7 +91,7 @@ export function CardView({ cell, size = 'normal', onClick, highlight, pulse }: P
         '&:hover': onClick ? { transform: 'translateY(-3px)' } : {},
       }}
     >
-      {face ? cell.value : '?'}
+      {face ? cell.value : peek != null ? <span style={{ opacity: 0.6 }}>{peek}</span> : '?'}
     </Box>
   );
 }

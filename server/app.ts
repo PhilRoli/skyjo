@@ -14,7 +14,7 @@ const CREATE_LIMIT = 5;
 const CREATE_WINDOW_MS = 60_000;
 
 export function createSkyjoServer(
-  opts: { manager?: RoomManager; staticDir?: string; maxSocketsPerIp?: number; botDelayMs?: number } = {},
+  opts: { manager?: RoomManager; staticDir?: string; maxSocketsPerIp?: number; botDelayMs?: number; devMode?: boolean } = {},
 ) {
   const maxSocketsPerIp = opts.maxSocketsPerIp ?? MAX_SOCKETS_PER_IP;
   const manager = opts.manager ?? new RoomManager();
@@ -33,9 +33,17 @@ export function createSkyjoServer(
   const httpServer = createServer(app);
   const io = new Server(httpServer);
   const personal = (code: string, id: string) => `${code}:${id}`;
+  // Debug view of all cards; only exists when the server is started with DEV_MODE, never on the live server.
+  const devMode = opts.devMode ?? false;
+  const devOn = new Set<string>();
   const broadcast = (code: string) => {
     for (const id of manager.memberIds(code)) {
-      io.to(personal(code, id)).emit('state', manager.stateFor(code, id));
+      const state = manager.stateFor(code, id);
+      if (devMode) {
+        state.devAllowed = true;
+        if (devOn.has(personal(code, id))) state.dev = manager.devInfo(code);
+      }
+      io.to(personal(code, id)).emit('state', state);
     }
   };
 
@@ -155,6 +163,14 @@ export function createSkyjoServer(
       const id = manager.addBot(s.code, s.playerId, level);
       broadcast(s.code);
       return { id };
+    });
+    on('dev:set', ({ on: enable }) => {
+      if (!devMode) throw new Error('Dev-Modus ist nicht aktiv');
+      const s = session();
+      const key = personal(s.code, s.playerId);
+      if (enable) devOn.add(key);
+      else devOn.delete(key);
+      broadcast(s.code);
     });
     on('game:start', () => {
       const s = session();

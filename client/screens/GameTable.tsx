@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -27,6 +28,16 @@ interface Props {
 
 export function GameTable({ state, act, remove, nudge, next, rematch, play, leave }: Props) {
   const g = state.game!;
+  const dev = state.dev;
+  /** Dev mode: sum of all cards incl. face-down ones, shown faded as `( X )`. */
+  const trueSum = (id: string) => {
+    const sum = (dev?.grids[id] ?? []).reduce<number>((a, v) => a + (v ?? 0), 0);
+    return dev && (
+      <Typography component="span" variant="caption" sx={{ ml: 0.5, opacity: 0.45 }}>
+        ( {sum} )
+      </Typography>
+    );
+  };
   const isHost = state.room.hostId === state.me;
   const spectator = state.role === 'spectator';
   const me = g.players.find((p) => p.id === g.me); // undefined for spectators
@@ -130,12 +141,12 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
                 {p.name}
               </Typography>
               <Typography variant="caption" component="div" sx={{ mb: 0.5 }}>
-                Aktuell <b>{visibleSum(p.grid)}</b> · Gesamt {p.total}
+                Aktuell <b>{visibleSum(p.grid)}</b>{trueSum(p.id)} · Gesamt {p.total}
               </Typography>
               {p.left ? (
                 <Typography variant="caption">ausgeschieden</Typography>
               ) : (
-                <GridView grid={p.grid} size="small" pulseColumns={clearedBy(p.id)} pulseKey={g.eventSeq} />
+                <GridView grid={p.grid} size="small" peek={dev?.grids[p.id]} pulseColumns={clearedBy(p.id)} pulseKey={g.eventSeq} />
               )}
               {isHost && !p.left && member && !member.connected && (
                 <Button size="small" color="warning" onClick={() => remove(p.id)}>
@@ -178,13 +189,26 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
         )}
       </Stack>
 
+      {dev && (
+        <Paper sx={{ p: 1, alignSelf: 'center' }}>
+          <Typography variant="caption" component="div" sx={{ fontWeight: 700 }}>
+            Dev · Stapel ({g.deckCount}){dev.drawn !== null && g.drawn === null && ` · Gezogen: ${dev.drawn}`}
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+            {dev.deck.map((d) => (
+              <Chip key={d.value} size="small" label={`${d.value} × ${d.count}`} />
+            ))}
+          </Box>
+        </Paper>
+      )}
+
       {me && (
         <Paper sx={{ p: 2, outline: myTurn ? '2px solid #ff9800' : 'none', alignSelf: 'center' }}>
           <Typography sx={{ fontWeight: 700 }}>{me.name}</Typography>
           <Typography variant="body2" component="div" sx={{ mb: 1 }}>
-            Aktuell <b>{visibleSum(me.grid)}</b> · Gesamt {me.total}
+            Aktuell <b>{visibleSum(me.grid)}</b>{trueSum(me.id)} · Gesamt {me.total}
           </Typography>
-          <GridView grid={me.grid} canClick={clickable} onSlot={onSlot} pulseColumns={clearedBy(me.id)} pulseKey={g.eventSeq} />
+          <GridView grid={me.grid} peek={dev?.grids[me.id]} canClick={clickable} onSlot={onSlot} pulseColumns={clearedBy(me.id)} pulseKey={g.eventSeq} />
         </Paper>
       )}
 
