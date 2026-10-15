@@ -7,6 +7,8 @@ export interface BotRunnerOptions {
   delayMs?: number;
   rng?: Rng;
   onError?: (e: unknown) => void;
+  /** Called after a bot move was applied, e.g. to push the new state to the clients. */
+  onActed?: (code: string) => void;
 }
 
 /** Plays the bots of all rooms. It only ever acts through `manager.act`, like a human would. */
@@ -16,6 +18,7 @@ export class BotRunner {
   private delayMs: number;
   private rng: Rng;
   private onError: (e: unknown) => void;
+  private onActed: (code: string) => void;
 
   constructor(
     private manager: RoomManager,
@@ -24,6 +27,7 @@ export class BotRunner {
     this.delayMs = opts.delayMs ?? 900;
     this.rng = opts.rng ?? Math.random;
     this.onError = opts.onError ?? ((e) => console.error('bot move failed', e));
+    this.onActed = opts.onActed ?? (() => {});
   }
 
   /** Call after every change of a room. */
@@ -48,6 +52,20 @@ export class BotRunner {
   /** Picks up pending bot moves, e.g. after rooms were restored from disk. */
   resumeAll(): void {
     for (const code of this.manager.roomCodes()) this.notify(code);
+  }
+
+  /** Number of tracked bot memories and pending timers (for tests and monitoring). */
+  get tracked(): number {
+    return this.memories.size + this.timers.size;
+  }
+
+  /** Drops memories and timers of rooms that were deleted (e.g. by the idle sweep). */
+  prune(): void {
+    const alive = new Set(this.manager.roomCodes());
+    for (const key of [...this.timers.keys(), ...this.memories.keys()]) {
+      const code = key.split(':')[0];
+      if (!alive.has(code)) this.forget(code);
+    }
   }
 
   dispose(): void {
@@ -86,6 +104,12 @@ export class BotRunner {
     if (!action) return;
     try {
       this.manager.act(code, id, action);
+    } catch (e) {
+      this.onError(e);
+      return;
+    }
+    try {
+      this.onActed(code);
     } catch (e) {
       this.onError(e);
     }

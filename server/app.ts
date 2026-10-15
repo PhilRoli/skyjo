@@ -18,8 +18,6 @@ export function createSkyjoServer(
 ) {
   const maxSocketsPerIp = opts.maxSocketsPerIp ?? MAX_SOCKETS_PER_IP;
   const manager = opts.manager ?? new RoomManager();
-  const runner = new BotRunner(manager, { delayMs: opts.botDelayMs });
-  manager.onRoomChange = (code) => runner.notify(code);
   const app = express();
   app.get('/healthz', (_req, res) => {
     res.send('ok');
@@ -33,7 +31,6 @@ export function createSkyjoServer(
   }
 
   const httpServer = createServer(app);
-  httpServer.on('close', () => runner.dispose());
   const io = new Server(httpServer);
   const personal = (code: string, id: string) => `${code}:${id}`;
   const broadcast = (code: string) => {
@@ -41,6 +38,11 @@ export function createSkyjoServer(
       io.to(personal(code, id)).emit('state', manager.stateFor(code, id));
     }
   };
+
+  // Bots act through the manager, not through a socket handler: push their moves to the clients here.
+  const runner = new BotRunner(manager, { delayMs: opts.botDelayMs, onActed: broadcast });
+  manager.onRoomChange = (code) => runner.notify(code);
+  httpServer.on('close', () => runner.dispose());
 
   // Behind Caddy the first X-Forwarded-For entry is the real client; the app port is bound to localhost only.
   const clientIp = (socket: Socket): string => {

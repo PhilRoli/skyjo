@@ -13,7 +13,10 @@ console.log(`restored ${persistence.load()} room(s)`);
 manager.onChange = persistence.schedule;
 runner.resumeAll();
 
-setInterval(() => manager.sweep(), 10 * 60 * 1000).unref();
+setInterval(() => {
+  manager.sweep();
+  runner.prune();
+}, 10 * 60 * 1000).unref();
 
 // Save before the sockets close, so the snapshot still reflects who was connected.
 const shutdown = () => {

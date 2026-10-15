@@ -94,6 +94,36 @@ describe('BotRunner', () => {
     runner.dispose();
   });
 
+  it('calls onActed with the room code after every successful bot move', async () => {
+    const m = new RoomManager(seeded(3));
+    const acted: string[] = [];
+    const runner = new BotRunner(m, { delayMs: 0, rng: seeded(9), onActed: (code) => acted.push(code) });
+    m.onRoomChange = (code) => runner.notify(code);
+    const h = m.create('Anna');
+    m.addBot(h.code, h.playerId, 'easy');
+    m.start(h.code, h.playerId);
+    await until(() => acted.length >= 2); // the bot's two initial flips
+    expect(new Set(acted)).toEqual(new Set([h.code]));
+    runner.dispose();
+  });
+
+  it('prune forgets the memories and timers of rooms that no longer exist', async () => {
+    let t = 0;
+    const m = new RoomManager(seeded(3), () => t);
+    const runner = new BotRunner(m, { delayMs: 60_000, rng: seeded(9) });
+    m.onRoomChange = (code) => runner.notify(code);
+    const h = m.create('Anna');
+    m.addBot(h.code, h.playerId, 'easy');
+    m.start(h.code, h.playerId);
+    expect(runner.tracked).toBeGreaterThan(0);
+    m.setConnected(h.code, h.playerId, false);
+    t = 3 * 3600 * 1000;
+    expect(m.sweep()).toBe(1);
+    runner.prune();
+    expect(runner.tracked).toBe(0);
+    runner.dispose();
+  });
+
   it('reports a bot error instead of throwing', async () => {
     const errors: unknown[] = [];
     const { m, h, code, runner } = setup(['easy'], 0, (e) => errors.push(e));
