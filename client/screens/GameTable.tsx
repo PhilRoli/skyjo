@@ -4,6 +4,7 @@ import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { describeEvents } from '../../shared/events';
 import { visibleSum } from '../../shared/score';
@@ -35,7 +36,8 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
   const nameOf = (id: string | null) => g.players.find((p) => p.id === id)?.name ?? '';
   const over = g.phase === 'roundOver' || g.phase === 'gameOver';
   const [nudgeCooling, setNudgeCooling] = useState(false);
-  const canNudge = !spectator && !myTurn && g.current !== null && !over;
+  const isBot = (id: string | null) => !!state.room.members.find((m) => m.id === id)?.bot;
+  const canNudge = !spectator && !myTurn && g.current !== null && !over && !isBot(g.current);
   const nudgeNow = () => {
     nudge();
     setNudgeCooling(true);
@@ -129,6 +131,7 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
           return (
             <Paper key={p.id} sx={{ p: 1, outline: g.current === p.id ? '2px solid #ff9800' : 'none' }}>
               <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                {member?.bot && <SmartToyIcon sx={{ fontSize: 14, verticalAlign: 'text-bottom', mr: 0.5 }} />}
                 {p.name}
               </Typography>
               <Typography variant="caption" component="div" sx={{ mb: 0.5 }}>
