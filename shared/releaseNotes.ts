@@ -7,6 +7,11 @@ export interface ReleaseNote {
 /** Newest first. Shown in the app when clicking the version. */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.3.1',
+    title: 'Raum verlassen',
+    items: ['Im laufenden Spiel kann man den Raum jetzt verlassen.'],
+  },
+  {
     version: '1.3.0',
     title: 'Zuschauer und Bots',
     items: [
