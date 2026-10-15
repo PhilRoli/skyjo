@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { apply, newGame, removePlayer, startRound, winners } from './rules';
+import { apply, newGame, removePlayer, scoreRound, startRound, winners } from './rules';
 import type { Cell } from './types';
 import { ALL_HIDDEN, FILL, cells, mkState, seeded } from './testUtils';
 
@@ -194,7 +194,7 @@ describe('round end and scoring', () => {
     expect(s.phase).toBe('flipAfterDiscard');
     s = act(s, 'B', { type: 'flipHidden', slot: 0 });
     expect(s.phase).toBe('roundOver');
-    expect(s.lastRound).toEqual({ scores: { A: 23, B: 24 }, doubled: false, finisher: 'A' });
+    expect(s.lastRound).toMatchObject({ scores: { A: 23, B: 24 }, doubled: false, finisher: 'A' });
     expect(s.players.map((p) => p.total)).toEqual([23, 24]);
   });
 
@@ -207,7 +207,7 @@ describe('round end and scoring', () => {
     const a = cells([...Array(6).fill(null), -2, 3, 3, -2, 3, 3]);
     const b = cells([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], [0]);
     const s = flipB(lastTurn(a, b), 0);
-    expect(s.lastRound).toEqual({ scores: { A: 16, B: 4 }, doubled: true, finisher: 'A' });
+    expect(s.lastRound).toMatchObject({ scores: { A: 16, B: 4 }, doubled: true, finisher: 'A' });
   });
 
   it('does not double a negative sum', () => {
@@ -402,5 +402,22 @@ describe('target score', () => {
   it('newGame uses the given target and defaults to 100', () => {
     expect(newGame(two, seeded(1), 50).target).toBe(50);
     expect(newGame(two, seeded(1)).target).toBe(100);
+  });
+});
+
+describe('round trace', () => {
+  it('ends with a point where nothing is hidden and sum equals the raw score', () => {
+    const s = scoreRound(mkState([cells([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]), cells(FILL, [0])]));
+    const last = s.lastRound!.trace!.at(-1)!;
+    expect(last.A).toEqual({ sum: 78, hidden: 0, min: 78, max: 78 });
+    expect(last.B).toEqual({ sum: 24, hidden: 0, min: 24, max: 24 });
+  });
+
+  it('bounds hidden cards by what has not been seen yet', () => {
+    // All five -2 cards are in the grid and all 12s are discarded: min for one hidden card is -1, max 11.
+    const discard = Array(10).fill(12);
+    const s2 = mkState([cells([-2, -2, 1, -2, -2, 2, -2, 0, 5, 3, 3, 4], [10, 11]), cells(FILL)], { phase: 'flipAfterDiscard', discard, trace: [] });
+    const p = apply(s2, 'A', { type: 'flipHidden', slot: 10 }, seeded(1)).trace![0].A;
+    expect(p).toEqual({ sum: 4, hidden: 1, min: 3, max: 15 });
   });
 });
