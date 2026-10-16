@@ -8,7 +8,9 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import StarIcon from '@mui/icons-material/Star';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAnimations } from '../animations';
@@ -47,6 +49,9 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
   };
   const isHost = state.room.hostId === state.me;
   const spectator = state.role === 'spectator';
+  const spectatorNames = state.room.members.filter((m) => m.spectator && m.name.trim()).map((m) => m.name);
+  const hostMark = (id: string) =>
+    id === state.room.hostId && <StarIcon titleAccess="Host" sx={{ fontSize: 14, verticalAlign: 'text-bottom', mr: 0.5, color: 'warning.main' }} />;
   const me = g.players.find((p) => p.id === g.me); // undefined for spectators
   const others = g.players.filter((p) => p.id !== g.me);
   const myTurn = !spectator && g.current === g.me;
@@ -166,8 +171,12 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
           </Typography>
           {state.room.spectatorCount > 0 && (
             <Typography component="span" variant="caption" sx={{ ml: 1, fontWeight: 400, opacity: 0.7 }}>
-              <VisibilityIcon sx={{ fontSize: 14, verticalAlign: 'text-bottom', mr: 0.25 }} />
-              {state.room.spectatorCount}
+              <Tooltip title={spectatorNames.join(', ')} disableHoverListener={spectatorNames.length === 0}>
+                <span>
+                  <VisibilityIcon sx={{ fontSize: 14, verticalAlign: 'text-bottom', mr: 0.25 }} />
+                  {state.room.spectatorCount}
+                </span>
+              </Tooltip>
               {isHost && !over && state.room.members.some((m) => m.spectator && m.wantsToPlay) &&
                 ` · ${state.room.members.filter((m) => m.spectator && m.wantsToPlay).length} angemeldet`}
             </Typography>
@@ -192,6 +201,7 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
             <Paper key={p.id} sx={{ p: 1, outline: g.current === p.id ? '2px solid #ff9800' : 'none' }}>
               <Typography variant="body2" sx={{ fontWeight: 700 }}>
                 {member?.bot && <SmartToyIcon sx={{ fontSize: 14, verticalAlign: 'text-bottom', mr: 0.5 }} />}
+                {hostMark(p.id)}
                 {p.name}
               </Typography>
               <Typography variant="caption" component="div" sx={{ mb: 0.5 }}>
@@ -258,7 +268,10 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
 
       {me && (
         <Paper sx={{ p: 2, outline: myTurn ? '2px solid #ff9800' : 'none', alignSelf: 'center' }}>
-          <Typography sx={{ fontWeight: 700 }}>{me.name}</Typography>
+          <Typography sx={{ fontWeight: 700 }}>
+            {hostMark(me.id)}
+            {me.name}
+          </Typography>
           <Typography variant="body2" component="div" sx={{ mb: 1 }}>
             Aktuell <b>{visibleSum(me.grid)}</b>{trueSum(me.id)} · Gesamt {me.total}
           </Typography>
