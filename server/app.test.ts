@@ -309,9 +309,26 @@ describe('spectators over sockets', () => {
     for (const p of s.game!.players) for (const c of p.grid) if (c && !c.up) expect(c.value).toBeNull();
     expect((await z.request('game:action', { type: 'flipInitial', slot: 0 })).error).toBe('Zuschauer können nicht spielen');
     expect((await z.request('game:nudge')).error).toBe('Zuschauer können nicht spielen');
-    expect((await z.request('room:play')).error).toBe('Gerade nicht möglich');
+    expect((await z.request('room:play')).wantsToPlay).toBe(true);
     const seenByPlayer = await a.until((x) => x.room.spectatorCount === 1);
     expect(seenByPlayer.room.members.some((m) => m.spectator)).toBe(true);
+  });
+
+  it('chat reaches players and spectators; late joiners get the history', async () => {
+    const { a, created } = await startedGame();
+    const z = client();
+    await z.request('room:join', { code: created.code, name: 'Zoe' });
+    const got = (c: { socket: Socket }) => new Promise<any>((r) => c.socket.once('chat', r));
+    const onSpectator = got(z);
+    const onPlayer = got(a);
+    expect((await a.request('chat:send', { text: 'hi' })).ok).toBe(true);
+    expect((await onSpectator).text).toBe('hi');
+    expect((await onPlayer).name).toBe('Anna');
+    const late = client();
+    const history = new Promise<any[]>((r) => late.socket.once('chat:history', r));
+    await late.request('room:join', { code: created.code, name: 'Max' });
+    expect((await history).map((m) => m.text)).toEqual(['hi']);
+    expect((await a.request('chat:send', { text: ' ' })).ok).toBe(false);
   });
 
   it('a reload (new socket + token) keeps the spectator role', async () => {

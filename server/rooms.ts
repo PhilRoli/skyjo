@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { apply, newGame, removePlayer, startRound } from '../shared/rules';
-import { ALLOWED_TARGETS, BOT_LEVELS, DEFAULT_TARGET, MAX_PLAYERS, type Action, type BotLevel, type GameState, type Rng } from '../shared/types';
+import { ALLOWED_TARGETS, BOT_LEVELS, DEFAULT_TARGET, MAX_PLAYERS, type Action, type BotLevel, type ChatMessage, type GameState, type Rng } from '../shared/types';
 import { devViewFor, viewFor, type ClientState, type DevInfo, type PlayerView } from '../shared/view';
 
 const MAX_NAME = 16;
@@ -9,6 +9,10 @@ const HOST_GRACE_MS = 30_000;
 const MAX_SPECTATORS = 20;
 const BOT_NAMES = ['Nova', 'Pixel', 'Byte', 'Echo', 'Luna', 'Zed', 'Robo', 'Max'];
 const NUDGE_COOLDOWN_MS = 10_000;
+const CHAT_HISTORY = 50;
+const CHAT_MAX_LEN = 200;
+const CHAT_BURST = 5;
+const CHAT_WINDOW_MS = 10_000;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 interface Member {
@@ -32,6 +36,9 @@ interface Room {
   hostGraceUntil?: number;
   /** Not persisted: limits nudging to once per cooldown for the whole room. */
   lastNudgeAt?: number;
+  /** Not persisted: the last CHAT_HISTORY messages and each sender's recent send times. */
+  chat?: ChatMessage[];
+  chatTimes?: Map<string, number[]>;
 }
 
 export interface RoomSnapshot {
@@ -321,7 +328,7 @@ export class RoomManager {
     const room = this.room(code);
     const member = this.member(room, playerId);
     if (!member.spectator) throw new Error('Du spielst bereits mit');
-    if (room.game?.phase !== 'gameOver') throw new Error('Gerade nicht möglich');
+    if (!room.game) throw new Error('Gerade nicht möglich');
     member.wantsToPlay = !member.wantsToPlay;
     this.touch(room);
     return member.wantsToPlay;
@@ -343,6 +350,27 @@ export class RoomManager {
       if (next) room.hostId = next.id;
     }
     this.touch(room);
+  }
+
+  sendChat(code: string, playerId: string, text: unknown): ChatMessage {
+    const room = this.room(code);
+    const member = this.member(room, playerId);
+    if (member.bot) throw new Error('Bots können nicht schreiben');
+    const clean = typeof text === 'string' ? text.trim().replace(/\s+/g, ' ').slice(0, CHAT_MAX_LEN) : '';
+    if (!clean) throw new Error('Nachricht ist leer');
+    const now = this.now();
+    const times = (room.chatTimes ??= new Map<string, number[]>());
+    const recent = (times.get(playerId) ?? []).filter((t) => now - t < CHAT_WINDOW_MS);
+    if (recent.length >= CHAT_BURST) throw new Error('Zu viele Nachrichten');
+    times.set(playerId, [...recent, now]);
+    const msg: ChatMessage = { id: randomUUID(), from: playerId, name: member.name, text: clean, at: now };
+    room.chat = [...(room.chat ?? []), msg].slice(-CHAT_HISTORY);
+    room.lastActivity = now;
+    return msg;
+  }
+
+  chatHistory(code: string): ChatMessage[] {
+    return this.rooms.get(normalizeCode(code))?.chat ?? [];
   }
 
   memberIds(code: string): string[] {

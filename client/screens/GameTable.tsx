@@ -168,6 +168,8 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
             <Typography component="span" variant="caption" sx={{ ml: 1, fontWeight: 400, opacity: 0.7 }}>
               <VisibilityIcon sx={{ fontSize: 14, verticalAlign: 'text-bottom', mr: 0.25 }} />
               {state.room.spectatorCount}
+              {isHost && !over && state.room.members.some((m) => m.spectator && m.wantsToPlay) &&
+                ` · ${state.room.members.filter((m) => m.spectator && m.wantsToPlay).length} angemeldet`}
             </Typography>
           )}
           {canNudge && (
@@ -264,6 +266,11 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
         </Paper>
       )}
 
+      {spectator && !over && (
+        <Button variant="outlined" sx={{ alignSelf: 'center' }} onClick={play}>
+          {state.room.members.find((m) => m.id === state.me)?.wantsToPlay ? 'Anmeldung zurückziehen' : 'Zur Revanche anmelden'}
+        </Button>
+      )}
       {over && (
         <Scoreboard
           game={g}

@@ -77,3 +77,11 @@ export type Action =
   | { type: 'swap'; slot: number }
   | { type: 'discardDrawn' }
   | { type: 'flipHidden'; slot: number };
+
+export interface ChatMessage {
+  id: string;
+  from: string;
+  name: string;
+  text: string;
+  at: number;
+}

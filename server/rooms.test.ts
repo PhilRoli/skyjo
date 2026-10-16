@@ -430,12 +430,13 @@ describe('play request and rematch', () => {
     return { ...l, spectator };
   }
 
-  it('is only for spectators and only after the game ended; toggles', () => {
+  it('is only for spectators, also during a running game; toggles', () => {
     const l = lobby(['Anna', 'Ben']);
     l.m.start(l.code, l.host.playerId);
     const z = l.m.join(l.code, 'Zoe');
-    expect(() => l.m.requestPlay(l.code, z.playerId)).toThrow('Gerade nicht möglich');
     expect(() => l.m.requestPlay(l.code, l.host.playerId)).toThrow('Du spielst bereits mit');
+    expect(l.m.requestPlay(l.code, z.playerId)).toBe(true);
+    expect(l.m.requestPlay(l.code, z.playerId)).toBe(false);
     l.m.leave(l.code, l.rest[0].playerId);
     expect(l.m.requestPlay(l.code, z.playerId)).toBe(true);
     expect(l.m.requestPlay(l.code, z.playerId)).toBe(false);
@@ -637,5 +638,41 @@ describe('spectators: disconnected tabs', () => {
     t = 3 * 3600 * 1000;
     expect(m.sweep()).toBe(1);
     expect(() => m.stateFor(host.code, z.playerId)).toThrow('Raum nicht gefunden');
+  });
+});
+
+
+describe('chat', () => {
+  function room() {
+    let t = 1000;
+    const m = new RoomManager(seeded(1), () => t);
+    const host = m.create('Anna');
+    return { m, host, tick: (ms: number) => (t += ms) };
+  }
+
+  it('stores trimmed messages with the sender name and keeps the last 50', () => {
+    const { m, host, tick } = room();
+    const msg = m.sendChat(host.code, host.playerId, '  hallo   welt ');
+    expect(msg).toMatchObject({ from: host.playerId, name: 'Anna', text: 'hallo welt' });
+    for (let i = 0; i < 60; i++) {
+      tick(5000);
+      m.sendChat(host.code, host.playerId, `n${i}`);
+    }
+    const log = m.chatHistory(host.code);
+    expect(log).toHaveLength(50);
+    expect(log.at(-1)?.text).toBe('n59');
+  });
+
+  it('rejects empty, caps length, rate limits per sender and blocks bots', () => {
+    const { m, host, tick } = room();
+    expect(() => m.sendChat(host.code, host.playerId, '   ')).toThrow('leer');
+    expect(() => m.sendChat(host.code, host.playerId, 42)).toThrow('leer');
+    expect(m.sendChat(host.code, host.playerId, 'x'.repeat(500)).text).toHaveLength(200);
+    for (let i = 0; i < 4; i++) m.sendChat(host.code, host.playerId, 'a');
+    expect(() => m.sendChat(host.code, host.playerId, 'a')).toThrow('Zu viele');
+    tick(10_001);
+    expect(() => m.sendChat(host.code, host.playerId, 'a')).not.toThrow();
+    const botId = m.addBot(host.code, host.playerId, 'normal');
+    expect(() => m.sendChat(host.code, botId, 'hi')).toThrow('Bots');
   });
 });
