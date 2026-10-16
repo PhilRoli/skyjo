@@ -4,6 +4,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Snackbar from '@mui/material/Snackbar';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { GameTable } from './screens/GameTable';
+import { Chat } from './components/Chat';
 import { LeaveButton } from './components/LeaveButton';
 import { AnimationsToggle, RulesButton } from './components/RulesDialog';
 import { VersionBadge } from './components/VersionBadge';
@@ -42,6 +43,7 @@ export function App() {
           <GameTable state={g.state} act={g.act} remove={g.remove} nudge={g.nudge} next={g.next} rematch={g.rematch} play={g.play} leave={g.leave} />
         )}
       </Container>
+      {g.state && <Chat messages={g.chat} me={g.state.me} onSend={g.sendChat} />}
       <VersionBadge devAllowed={!!g.state?.devAllowed} devOn={!!g.state?.dev} onToggleDev={g.setDev} />
       <Snackbar open={g.nudgedBy !== null} autoHideDuration={5000} onClose={g.clearNudge}>
         <Alert severity="info" onClose={g.clearNudge}>
