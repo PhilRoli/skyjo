@@ -7,6 +7,11 @@ export interface ReleaseNote {
 /** Newest first. Shown in the app when clicking the version. */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.1',
+    title: 'Host-Markierung',
+    items: ['Der Host ist am Tisch mit einem Stern markiert.', 'Ein Hover über das Zuschauer-Symbol zeigt deren Namen.'],
+  },
+  {
     version: '1.6.0',
     title: 'Chat und Anmeldung',
     items: [
