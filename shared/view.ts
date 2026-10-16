@@ -30,6 +30,8 @@ export interface RoomInfo {
   started: boolean;
   target: number;
   spectatorCount: number;
+  /** Remaining nudge cooldown in ms, shared by the whole room. */
+  nudgeCooldownMs: number;
   members: {
     id: string;
     name: string;

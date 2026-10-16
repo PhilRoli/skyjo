@@ -5,6 +5,7 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import LogoutIcon from '@mui/icons-material/Logout';
 
 interface Props {
@@ -16,9 +17,11 @@ export function LeaveButton({ spectator, onLeave }: Props) {
   const [confirm, setConfirm] = useState(false);
   return (
     <>
-      <IconButton aria-label="Verlassen" onClick={spectator ? onLeave : () => setConfirm(true)}>
-        <LogoutIcon sx={{ transform: 'scaleX(-1)' }} />
-      </IconButton>
+      <Tooltip title="Verlassen">
+        <IconButton aria-label="Verlassen" onClick={spectator ? onLeave : () => setConfirm(true)}>
+          <LogoutIcon sx={{ transform: 'scaleX(-1)' }} />
+        </IconButton>
+      </Tooltip>
       <Dialog open={confirm} onClose={() => setConfirm(false)}>
         <DialogTitle sx={{ fontWeight: 700 }}>Raum verlassen?</DialogTitle>
         <DialogContent>Du scheidest aus dem laufenden Spiel aus.</DialogContent>

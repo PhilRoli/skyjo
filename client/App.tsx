@@ -1,8 +1,10 @@
 import Alert from '@mui/material/Alert';
 import Container from '@mui/material/Container';
 import CssBaseline from '@mui/material/CssBaseline';
+import Box from '@mui/material/Box';
 import Snackbar from '@mui/material/Snackbar';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { useAnimations } from './animations';
 import { GameTable } from './screens/GameTable';
 import { Chat } from './components/Chat';
 import { LeaveButton } from './components/LeaveButton';
@@ -12,6 +14,29 @@ import { Home } from './screens/Home';
 import { Lobby } from './screens/Lobby';
 import { useGame } from './useGame';
 import { useWakeLock } from './useWakeLock';
+
+const NUDGE_BLUE = '#2196f3';
+
+function NudgeGlow() {
+  const { enabled: animations } = useAnimations();
+  return (
+    <Box
+      aria-hidden
+      sx={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1300,
+        pointerEvents: 'none',
+        boxShadow: `inset 0 0 0 4px ${NUDGE_BLUE}, inset 0 0 48px 14px rgba(33,150,243,0.75)`,
+        animation: animations ? 'skyjo-nudge 1.2s ease-in-out infinite' : 'none',
+        '@keyframes skyjo-nudge': {
+          '0%, 100%': { boxShadow: `inset 0 0 0 4px ${NUDGE_BLUE}, inset 0 0 12px 2px rgba(33,150,243,0.35)` },
+          '50%': { boxShadow: `inset 0 0 0 4px ${NUDGE_BLUE}, inset 0 0 48px 14px rgba(33,150,243,0.75)` },
+        },
+      }}
+    />
+  );
+}
 
 const theme = createTheme({ palette: { mode: 'dark' } });
 
@@ -45,6 +70,7 @@ export function App() {
       </Container>
       {g.state && <Chat messages={g.chat} me={g.state.me} onSend={g.sendChat} />}
       <VersionBadge devAllowed={!!g.state?.devAllowed} devOn={!!g.state?.dev} onToggleDev={g.setDev} />
+      {g.nudgedBy !== null && <NudgeGlow />}
       <Snackbar open={g.nudgedBy !== null} autoHideDuration={5000} onClose={g.clearNudge}>
         <Alert severity="info" onClose={g.clearNudge}>
           {g.nudgedBy} stupst dich an

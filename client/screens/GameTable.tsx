@@ -49,7 +49,8 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
   };
   const isHost = state.room.hostId === state.me;
   const spectator = state.role === 'spectator';
-  const spectatorNames = state.room.members.filter((m) => m.spectator && m.name.trim()).map((m) => m.name);
+  const spectatorNames = state.room.members.filter((m) => m.spectator && m.name.trim()).map((m) => (m.wantsToPlay ? `${m.name} ✓` : m.name));
+  const signedUp = state.room.members.filter((m) => m.spectator && m.wantsToPlay).length;
   const hostMark = (id: string) =>
     id === state.room.hostId && <StarIcon titleAccess="Host" sx={{ fontSize: 14, verticalAlign: 'text-bottom', mr: 0.5, color: 'warning.main' }} />;
   const me = g.players.find((p) => p.id === g.me); // undefined for spectators
@@ -63,11 +64,14 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
   const [nudgeCooling, setNudgeCooling] = useState(false);
   const isBot = (id: string | null) => !!state.room.members.find((m) => m.id === id)?.bot;
   const canNudge = !spectator && !myTurn && g.current !== null && !over && !isBot(g.current);
-  const nudgeNow = () => {
-    nudge();
-    setNudgeCooling(true);
-    setTimeout(() => setNudgeCooling(false), 10_000);
-  };
+  const nudgeNow = () => nudge();
+  const cooldownMs = state.room.nudgeCooldownMs;
+  useEffect(() => {
+    setNudgeCooling(cooldownMs > 0);
+    if (cooldownMs <= 0) return;
+    const t = setTimeout(() => setNudgeCooling(false), cooldownMs);
+    return () => clearTimeout(t);
+  }, [cooldownMs]);
   const eventLine = describeEvents(g.events, nameOf);
   const clearedBy = (id: string) => g.events.filter((e) => e.kind === 'clear' && e.by === id).map((e) => (e as { column: number }).column);
 
@@ -172,13 +176,12 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
           {state.room.spectatorCount > 0 && (
             <Typography component="span" variant="caption" sx={{ ml: 1, fontWeight: 400, opacity: 0.7 }}>
               <Tooltip title={spectatorNames.join(', ')} disableHoverListener={spectatorNames.length === 0}>
-                <span>
+              <span>
                   <VisibilityIcon sx={{ fontSize: 14, verticalAlign: 'text-bottom', mr: 0.25 }} />
                   {state.room.spectatorCount}
                 </span>
               </Tooltip>
-              {isHost && !over && state.room.members.some((m) => m.spectator && m.wantsToPlay) &&
-                ` · ${state.room.members.filter((m) => m.spectator && m.wantsToPlay).length} angemeldet`}
+              {!over && signedUp > 0 && ` · ${signedUp} angemeldet`}
             </Typography>
           )}
           {canNudge && (

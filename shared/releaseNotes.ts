@@ -7,6 +7,17 @@ export interface ReleaseNote {
 /** Newest first. Shown in the app when clicking the version. */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.2',
+    title: 'Anstupsen und Anmeldungen',
+    items: [
+      'Wer angestupst wird, bekommt einen blau leuchtenden Rand um den Bildschirm.',
+      'Nach einem Anstupsen ist der Button für alle im Raum 10 Sekunden gesperrt.',
+      'Alle Buttons und Icons haben einen Tooltip.',
+      'Bei der Revanche wird die Sitzordnung neu gemischt.',
+      'Die Zahl der angemeldeten Zuschauer sehen alle, im Hover sind sie mit Haken markiert.',
+    ],
+  },
+  {
     version: '1.6.1',
     title: 'Host-Markierung',
     items: ['Der Host ist am Tisch mit einem Stern markiert.', 'Ein Hover über das Zuschauer-Symbol zeigt deren Namen.'],
