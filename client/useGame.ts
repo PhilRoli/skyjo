@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Action, BotLevel } from '../shared/types';
+import type { Action, BotLevel, ChatMessage } from '../shared/types';
 import type { ClientState } from '../shared/view';
 import { loadSession, request, saveSession, socket } from './socket';
 
@@ -8,6 +8,7 @@ export function useGame() {
   const [connected, setConnected] = useState(socket.connected);
   const [booting, setBooting] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [chat, setChat] = useState<ChatMessage[]>([]);
   const [nudgedBy, setNudgedBy] = useState<string | null>(null);
 
   useEffect(() => {
@@ -45,8 +46,11 @@ export function useGame() {
         }
       }, 800);
     };
+    const onChat = (m: ChatMessage) => setChat((c) => [...c, m].slice(-50));
+    const onChatHistory = (h: ChatMessage[]) => setChat(h);
     const onKicked = () => {
       saveSession(null);
+      setChat([]);
       setState(null);
       setError('Du wurdest aus dem Raum entfernt');
     };
@@ -55,6 +59,8 @@ export function useGame() {
     socket.on('state', onState);
     socket.on('kicked', onKicked);
     socket.on('nudged', onNudged);
+    socket.on('chat', onChat);
+    socket.on('chat:history', onChatHistory);
     if (socket.connected) onConnect();
     return () => {
       socket.off('connect', onConnect);
@@ -62,6 +68,8 @@ export function useGame() {
       socket.off('state', onState);
       socket.off('kicked', onKicked);
       socket.off('nudged', onNudged);
+      socket.off('chat', onChat);
+      socket.off('chat:history', onChatHistory);
     };
   }, []);
 
@@ -85,6 +93,8 @@ export function useGame() {
     booting,
     error,
     clearError: () => setError(null),
+    chat,
+    sendChat: (text: string) => run(() => request('chat:send', { text })),
     nudgedBy,
     clearNudge: () => setNudgedBy(null),
     nudge: () => run(() => request('game:nudge')),
@@ -107,6 +117,7 @@ export function useGame() {
       }
       saveSession(null);
       setState(null);
+      setChat([]);
     },
   };
 }

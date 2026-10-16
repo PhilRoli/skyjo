@@ -7,6 +7,14 @@ export interface ReleaseNote {
 /** Newest first. Shown in the app when clicking the version. */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.0',
+    title: 'Chat und Anmeldung',
+    items: [
+      'Chat im Raum für Spieler und Zuschauer, mit Verlauf für neu Beigetretene.',
+      'Zuschauer können sich jederzeit für die Revanche anmelden, nicht erst nach Spielende.',
+    ],
+  },
+  {
     version: '1.5.1',
     title: 'Zudrehen nur einmal bestätigen',
     items: ['Nur wer als Erstes die letzte Karte aufdeckt, muss bestätigen. In der letzten Runde entfällt die Rückfrage.'],

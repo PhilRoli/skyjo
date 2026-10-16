@@ -101,6 +101,7 @@ export function createSkyjoServer(
       socket.join(code);
       socket.join(personal(code, playerId));
       manager.setConnected(code, playerId, true);
+      socket.emit('chat:history', manager.chatHistory(code));
       broadcast(code);
     };
 
@@ -157,6 +158,10 @@ export function createSkyjoServer(
       const wantsToPlay = manager.requestPlay(s.code, s.playerId);
       broadcast(s.code);
       return { wantsToPlay };
+    });
+    on('chat:send', ({ text }) => {
+      const s = session();
+      io.to(s.code).emit('chat', manager.sendChat(s.code, s.playerId, text));
     });
     on('room:addBot', ({ level }) => {
       const s = session();
