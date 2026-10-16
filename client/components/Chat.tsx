@@ -10,6 +10,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import Tooltip from '@mui/material/Tooltip';
 import { useEffect, useRef, useState } from 'react';
 import type { ChatMessage } from '../../shared/types';
 
@@ -41,11 +42,13 @@ export function Chat({ messages, me, onSend }: Props) {
 
   return (
     <>
-      <Fab color="primary" size="medium" aria-label="Chat" onClick={() => setOpen(true)} sx={{ position: 'fixed', right: 16, bottom: 56 }}>
-        <Badge color="error" badgeContent={unread}>
-          <ChatIcon />
-        </Badge>
-      </Fab>
+      <Tooltip title="Chat">
+        <Fab color="primary" size="medium" aria-label="Chat" onClick={() => setOpen(true)} sx={{ position: 'fixed', right: 16, bottom: 56 }}>
+          <Badge color="error" badgeContent={unread}>
+            <ChatIcon />
+          </Badge>
+        </Fab>
+      </Tooltip>
       <Drawer anchor="right" open={open} onClose={() => setOpen(false)}>
         <Box sx={{ width: { xs: '100vw', sm: 360 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <Typography variant="h6" sx={{ fontWeight: 800, p: 2 }}>
@@ -73,9 +76,11 @@ export function Chat({ messages, me, onSend }: Props) {
               onKeyDown={(e) => e.key === 'Enter' && send()}
               slotProps={{ htmlInput: { maxLength: 200 } }}
             />
-            <IconButton color="primary" aria-label="Senden" onClick={send}>
-              <SendIcon />
-            </IconButton>
+            <Tooltip title="Senden">
+              <IconButton color="primary" aria-label="Senden" onClick={send}>
+                <SendIcon />
+              </IconButton>
+            </Tooltip>
           </Box>
         </Box>
       </Drawer>

@@ -11,6 +11,7 @@ import Stack from '@mui/material/Stack';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
+import Tooltip from '@mui/material/Tooltip';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
@@ -49,9 +50,11 @@ export function Lobby({ state, onStart, onRemove, onTarget, onAddBot, onLeave }:
             key={m.id}
             secondaryAction={
               isHost && m.id !== me ? (
-                <IconButton aria-label="Entfernen" onClick={() => onRemove(m.id)}>
-                  <CloseIcon />
-                </IconButton>
+                <Tooltip title="Entfernen">
+                  <IconButton aria-label="Entfernen" onClick={() => onRemove(m.id)}>
+                    <CloseIcon />
+                  </IconButton>
+                </Tooltip>
               ) : null
             }
           >

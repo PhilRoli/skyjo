@@ -5,6 +5,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import Tooltip from '@mui/material/Tooltip';
 import CloseIcon from '@mui/icons-material/Close';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutlined';
 import AnimationIcon from '@mui/icons-material/Animation';
@@ -54,15 +55,19 @@ export function RulesButton() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <IconButton aria-label="Regeln" onClick={() => setOpen(true)}>
-        <HelpOutlineIcon />
-      </IconButton>
+      <Tooltip title="Regeln">
+        <IconButton aria-label="Regeln" onClick={() => setOpen(true)}>
+          <HelpOutlineIcon />
+        </IconButton>
+      </Tooltip>
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm" scroll="paper">
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 800 }}>
           Regeln
-          <IconButton aria-label="Schließen" onClick={() => setOpen(false)}>
-            <CloseIcon />
-          </IconButton>
+          <Tooltip title="Schließen">
+            <IconButton aria-label="Schließen" onClick={() => setOpen(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Tooltip>
         </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2}>
@@ -101,8 +106,10 @@ export function RulesButton() {
 export function AnimationsToggle() {
   const { enabled, toggle } = useAnimations();
   return (
-    <IconButton aria-label={enabled ? 'Animationen ausschalten' : 'Animationen einschalten'} onClick={toggle}>
-      {enabled ? <AnimationIcon /> : <MotionPhotosOffIcon />}
-    </IconButton>
+    <Tooltip title={enabled ? 'Animationen ausschalten' : 'Animationen einschalten'}>
+      <IconButton aria-label={enabled ? 'Animationen ausschalten' : 'Animationen einschalten'} onClick={toggle}>
+        {enabled ? <AnimationIcon /> : <MotionPhotosOffIcon />}
+      </IconButton>
+    </Tooltip>
   );
 }

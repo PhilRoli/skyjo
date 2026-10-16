@@ -191,6 +191,7 @@ export function createSkyjoServer(
       const s = session();
       const r = manager.nudge(s.code, s.playerId);
       io.to(personal(s.code, r.targetId)).emit('nudged', { from: r.fromName });
+      broadcast(s.code);
     });
     on('game:next', () => {
       const s = session();

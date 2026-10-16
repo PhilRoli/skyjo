@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { apply, newGame, removePlayer, startRound } from '../shared/rules';
+import { shuffle } from '../shared/deck';
 import { ALLOWED_TARGETS, BOT_LEVELS, DEFAULT_TARGET, MAX_PLAYERS, type Action, type BotLevel, type ChatMessage, type GameState, type Rng } from '../shared/types';
 import { devViewFor, viewFor, type ClientState, type DevInfo, type PlayerView } from '../shared/view';
 
@@ -270,7 +271,7 @@ export class RoomManager {
     const promoted = room.members
       .filter((m) => m.spectator && m.wantsToPlay)
       .slice(0, Math.max(0, MAX_PLAYERS - staying.length));
-    const next = [...staying, ...promoted];
+    const next = shuffle([...staying, ...promoted], this.rng);
     // Validates the player count (throws before anything is changed).
     const game = newGame(
       next.map(({ id, name }) => ({ id, name })),
@@ -394,6 +395,7 @@ export class RoomManager {
         started: room.game !== null,
         target: room.target,
         spectatorCount: room.members.filter((m) => m.spectator && m.connected).length,
+        nudgeCooldownMs: room.lastNudgeAt === undefined ? 0 : Math.max(0, NUDGE_COOLDOWN_MS - (this.now() - room.lastNudgeAt)),
         members: room.members.map((m) => ({
           id: m.id,
           name: m.name,
