@@ -1,4 +1,5 @@
 import ChatIcon from '@mui/icons-material/Chat';
+import CloseIcon from '@mui/icons-material/Close';
 import SendIcon from '@mui/icons-material/Send';
 import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
@@ -51,9 +52,14 @@ export function Chat({ messages, me, onSend }: Props) {
       </Tooltip>
       <Drawer anchor="right" open={open} onClose={() => setOpen(false)}>
         <Box sx={{ width: { xs: '100vw', sm: 360 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <Typography variant="h6" sx={{ fontWeight: 800, p: 2 }}>
-            Chat
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              Chat
+            </Typography>
+            <IconButton aria-label="Schließen" onClick={() => setOpen(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
           <List sx={{ flex: 1, overflowY: 'auto' }}>
             {messages.map((m) => (
               <ListItem key={m.id} sx={{ py: 0.25 }}>
