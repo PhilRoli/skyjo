@@ -7,6 +7,14 @@ export interface ReleaseNote {
 /** Newest first. Shown in the app when clicking the version. */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.3',
+    title: 'Schneller laden',
+    items: [
+      'Die App lädt deutlich schneller, besonders auf dem Handy.',
+      'Kleine Verbesserungen bei Barrierefreiheit und Suchmaschinen.',
+    ],
+  },
+  {
     version: '1.6.2',
     title: 'Anstupsen und Anmeldungen',
     items: [
