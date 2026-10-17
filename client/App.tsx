@@ -2,9 +2,6 @@ import Alert from '@mui/material/Alert';
 import Container from '@mui/material/Container';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
-import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
-import GitHubIcon from '@mui/icons-material/GitHub';
 import Snackbar from '@mui/material/Snackbar';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { Suspense, lazy } from 'react';
@@ -62,11 +59,6 @@ export function App() {
           <div>
             <AnimationsToggle />
             <RulesButton />
-            <Tooltip title="GitHub">
-              <IconButton aria-label="GitHub" component="a" href="https://github.com/PhilRoli/skyjo" target="_blank" rel="noopener noreferrer">
-                <GitHubIcon />
-              </IconButton>
-            </Tooltip>
           </div>
         </div>
         {!g.connected && !g.booting && <Alert severity="warning">Verbindung getrennt</Alert>}
