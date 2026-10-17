@@ -7,6 +7,14 @@ export interface ReleaseNote {
 /** Newest first. Shown in the app when clicking the version. */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.5',
+    title: 'Chat-Fix',
+    items: [
+      'Der Chat lässt sich auf dem Handy wieder schließen.',
+      'Besucherzählung mit Plausible, ohne Cookies und ohne personenbezogene Daten.',
+    ],
+  },
+  {
     version: '1.6.4',
     title: 'Aufgeräumt',
     items: [
