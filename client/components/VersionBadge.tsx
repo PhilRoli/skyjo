@@ -39,7 +39,7 @@ export function VersionBadge({ devAllowed, devOn, onToggleDev }: Props) {
           size="small"
           color="inherit"
           onClick={click}
-          aria-label="Release Notes"
+          aria-label={`Release Notes ${__APP_VERSION__}`}
           sx={{ position: 'fixed', right: 4, bottom: 0, opacity: 0.5, minWidth: 0, textTransform: 'none', fontSize: 12 }}
         >
           {__APP_VERSION__}

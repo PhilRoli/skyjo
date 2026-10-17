@@ -4,14 +4,13 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Snackbar from '@mui/material/Snackbar';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { Suspense, lazy } from 'react';
 import { useAnimations } from './animations';
-import { GameTable } from './screens/GameTable';
 import { Chat } from './components/Chat';
 import { LeaveButton } from './components/LeaveButton';
 import { AnimationsToggle, RulesButton } from './components/RulesDialog';
 import { VersionBadge } from './components/VersionBadge';
 import { Home } from './screens/Home';
-import { Lobby } from './screens/Lobby';
 import { useGame } from './useGame';
 import { useWakeLock } from './useWakeLock';
 
@@ -38,6 +37,9 @@ function NudgeGlow() {
   );
 }
 
+const GameTable = lazy(() => import('./screens/GameTable').then((m) => ({ default: m.GameTable })));
+const Lobby = lazy(() => import('./screens/Lobby').then((m) => ({ default: m.Lobby })));
+
 const theme = createTheme({ palette: { mode: 'dark' } });
 
 export function App() {
@@ -47,7 +49,7 @@ export function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Container maxWidth="md" sx={{ pb: 4 }}>
+      <Container component="main" maxWidth="md" sx={{ pb: 4 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8 }}>
           <div>
             {g.state?.game && g.state.game.phase !== 'roundOver' && g.state.game.phase !== 'gameOver' && (
@@ -60,6 +62,7 @@ export function App() {
           </div>
         </div>
         {!g.connected && !g.booting && <Alert severity="warning">Verbindung getrennt</Alert>}
+        <Suspense fallback={null}>
         {g.booting ? null : g.state === null ? (
           <Home initialCode={initialCode} onCreate={g.create} onJoin={g.join} />
         ) : g.state.game === null ? (
@@ -67,6 +70,7 @@ export function App() {
         ) : (
           <GameTable state={g.state} act={g.act} remove={g.remove} nudge={g.nudge} next={g.next} rematch={g.rematch} play={g.play} leave={g.leave} />
         )}
+        </Suspense>
       </Container>
       {g.state && <Chat messages={g.chat} me={g.state.me} onSend={g.sendChat} />}
       <VersionBadge devAllowed={!!g.state?.devAllowed} devOn={!!g.state?.dev} onToggleDev={g.setDev} />
