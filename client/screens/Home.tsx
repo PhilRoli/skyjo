@@ -34,7 +34,7 @@ export function Home({ initialCode, onCreate, onJoin }: Props) {
   const nameOk = name.trim().length > 0;
   return (
     <Stack spacing={3} sx={{ mt: 6 }}>
-      <Typography variant="h3" sx={{ fontWeight: 800 }}>
+      <Typography variant="h3" component="h1" sx={{ fontWeight: 800 }}>
         Skyjo
       </Typography>
       <TextField
@@ -49,7 +49,7 @@ export function Home({ initialCode, onCreate, onJoin }: Props) {
         }}>
         Raum erstellen
       </Button>
-      <Typography variant="h6" sx={{ fontWeight: 700 }}>
+      <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
         Beitreten
       </Typography>
       <Stack direction="row" spacing={1}>

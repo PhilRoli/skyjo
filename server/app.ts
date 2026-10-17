@@ -24,7 +24,13 @@ export function createSkyjoServer(
   });
   const dir = opts.staticDir;
   if (dir && existsSync(dir)) {
-    app.use(express.static(dir));
+    app.use(
+      express.static(dir, {
+        setHeaders: (res, file) => {
+          if (file.includes(`${path.sep}assets${path.sep}`)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        },
+      }),
+    );
     app.use((_req, res) => {
       res.sendFile(path.join(dir, 'index.html'));
     });
