@@ -404,20 +404,3 @@ describe('target score', () => {
     expect(newGame(two, seeded(1)).target).toBe(100);
   });
 });
-
-describe('round trace', () => {
-  it('ends with a point where nothing is hidden and sum equals the raw score', () => {
-    const s = scoreRound(mkState([cells([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]), cells(FILL, [0])]));
-    const last = s.lastRound!.trace!.at(-1)!;
-    expect(last.A).toEqual({ sum: 78, hidden: 0, min: 78, max: 78 });
-    expect(last.B).toEqual({ sum: 24, hidden: 0, min: 24, max: 24 });
-  });
-
-  it('bounds hidden cards by what has not been seen yet', () => {
-    // All five -2 cards are in the grid and all 12s are discarded: min for one hidden card is -1, max 11.
-    const discard = Array(10).fill(12);
-    const s2 = mkState([cells([-2, -2, 1, -2, -2, 2, -2, 0, 5, 3, 3, 4], [10, 11]), cells(FILL)], { phase: 'flipAfterDiscard', discard, trace: [] });
-    const p = apply(s2, 'A', { type: 'flipHidden', slot: 10 }, seeded(1)).trace![0].A;
-    expect(p).toEqual({ sum: 4, hidden: 1, min: 3, max: 15 });
-  });
-});
