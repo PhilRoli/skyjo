@@ -8,6 +8,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
 import CloseIcon from '@mui/icons-material/Close';
+import GitHubIcon from '@mui/icons-material/GitHub';
 import { RELEASE_NOTES } from '../../shared/releaseNotes';
 
 interface Props {
@@ -49,11 +50,18 @@ export function VersionBadge({ devAllowed, devOn, onToggleDev }: Props) {
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm" scroll="paper">
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 800 }}>
           Neuigkeiten
-          <Tooltip title="Schließen">
-            <IconButton aria-label="Schließen" onClick={() => setOpen(false)}>
-              <CloseIcon />
-            </IconButton>
-          </Tooltip>
+          <span>
+            <Tooltip title="GitHub">
+              <IconButton aria-label="GitHub" component="a" href="https://github.com/PhilRoli/skyjo" target="_blank" rel="noopener noreferrer">
+                <GitHubIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Schließen">
+              <IconButton aria-label="Schließen" onClick={() => setOpen(false)}>
+                <CloseIcon />
+              </IconButton>
+            </Tooltip>
+          </span>
         </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2}>

@@ -12,7 +12,6 @@ import {
   type GameState,
   type PlayerState,
   type Rng,
-  type TracePoint,
 } from './types';
 
 export const activePlayers = (state: GameState): PlayerState[] =>
@@ -20,30 +19,6 @@ export const activePlayers = (state: GameState): PlayerState[] =>
 
 export const upCount = (player: PlayerState): number =>
   player.grid.filter((c) => c?.up).length;
-
-function tracePoint(state: GameState): TracePoint {
-  const unseen = buildDeck();
-  const take = (value: number) => {
-    const i = unseen.indexOf(value);
-    if (i >= 0) unseen.splice(i, 1);
-  };
-  for (const p of state.players) for (const c of p.grid) if (c?.up) take(c.value);
-  for (const v of state.discard) take(v);
-  unseen.sort((a, b) => a - b);
-  const point: TracePoint = {};
-  for (const p of activePlayers(state)) {
-    const sum = p.grid.reduce((s, c) => s + (c?.up ? c.value : 0), 0);
-    const hidden = p.grid.filter((c) => c && !c.up).length;
-    const add = (cards: number[]) => cards.reduce((s, v) => s + v, 0);
-    point[p.id] = {
-      sum,
-      hidden,
-      min: sum + add(unseen.slice(0, hidden)),
-      max: sum + add(hidden === 0 ? [] : unseen.slice(-hidden)),
-    };
-  }
-  return point;
-}
 
 export function newGame(
   members: { id: string; name: string }[],
@@ -66,7 +41,6 @@ export function newGame(
     pendingFinal: [],
     initialDone: [],
     lastRound: null,
-    trace: [],
     events: [],
     eventSeq: 0,
     target,
@@ -93,7 +67,6 @@ export function startRound(prev: GameState, rng: Rng): GameState {
   state.pendingFinal = [];
   state.initialDone = [];
   state.lastRound = null;
-  state.trace = [];
   state.events = [];
   return state;
 }
@@ -207,8 +180,7 @@ export function scoreRound(state: GameState): GameState {
     }
   }
   for (const p of act) p.total += scores[p.id];
-  state.trace = [...(state.trace ?? []), tracePoint(state)];
-  state.lastRound = { scores, doubled, finisher: state.finisher, trace: state.trace };
+  state.lastRound = { scores, doubled, finisher: state.finisher };
   state.drawn = null;
   state.drawnFrom = null;
   state.phase = act.some((p) => p.total > state.target) ? 'gameOver' : 'roundOver';
@@ -217,7 +189,6 @@ export function scoreRound(state: GameState): GameState {
 
 export function apply(prev: GameState, playerId: string, action: Action, rng: Rng): GameState {
   const state = applyAction(structuredClone(prev), playerId, action, rng);
-  if (state.phase === 'draw') state.trace = [...(state.trace ?? []), tracePoint(state)];
   if (action.type !== 'flipInitial') state.eventSeq += 1;
   return state;
 }

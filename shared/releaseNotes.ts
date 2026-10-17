@@ -7,6 +7,14 @@ export interface ReleaseNote {
 /** Newest first. Shown in the app when clicking the version. */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.4',
+    title: 'Aufgeräumt',
+    items: [
+      'Der Verlaufsgraph am Rundenende ist entfernt, die App lädt dadurch noch schneller.',
+      'Link zum Quellcode auf GitHub bei den Neuigkeiten.',
+    ],
+  },
+  {
     version: '1.6.3',
     title: 'Schneller laden',
     items: [

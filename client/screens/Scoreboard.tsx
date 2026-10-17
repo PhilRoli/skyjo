@@ -10,7 +10,6 @@ import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import type { PlayerView } from '../../shared/view';
-import { RoundChart } from '../components/RoundChart';
 
 interface Props {
   game: PlayerView;
@@ -64,7 +63,6 @@ export function Scoreboard({ game, isHost, spectator, wantsToPlay, playRequests,
             ))}
           </TableBody>
         </Table>
-        {last?.trace && last.trace.length > 1 && <RoundChart me={game.me} trace={last.trace} />}
         {isHost ? (
           <>
             {over && playRequests > 0 && (

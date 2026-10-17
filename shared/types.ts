@@ -27,18 +27,10 @@ export interface PlayerState {
   left: boolean;
 }
 
-/**
- * Public state of one player at a point in the round: face-up sum, number of hidden cards and the
- * lowest/highest total still possible given the cards not yet seen anywhere.
- */
-export type TracePoint = Record<string, { sum: number; hidden: number; min: number; max: number }>;
-
 export interface RoundResult {
   scores: Record<string, number>;
   doubled: boolean;
   finisher: string | null;
-  /** Course of the round, one point per finished turn. Missing in rounds saved before 1.4.0. */
-  trace?: TracePoint[];
 }
 
 export type GameEvent =
@@ -62,8 +54,6 @@ export interface GameState {
   pendingFinal: string[];
   initialDone: string[];
   lastRound: RoundResult | null;
-  /** Trace of the running round. Missing in games saved before 1.4.0. */
-  trace?: TracePoint[];
   events: GameEvent[];
   eventSeq: number;
   /** The game ends once a total exceeds this value. */
