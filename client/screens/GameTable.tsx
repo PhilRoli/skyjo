@@ -74,7 +74,7 @@ export function GameTable({ state, act, remove, nudge, next, rematch, play, leav
     const t = setTimeout(() => setNudgeCooling(false), cooldownMs);
     return () => clearTimeout(t);
   }, [cooldownMs]);
-  const eventLine = describeEvents(g.events, nameOf, t);
+  const eventLine = describeEvents(g.events, nameOf, (key, options) => String(t(key as never, options as never)));
   const clearedBy = (id: string) => g.events.filter((e) => e.kind === 'clear' && e.by === id).map((e) => (e as { column: number }).column);
 
   // On phones the thumb sits at the bottom: keep the own cards (and the scoreboard) in view.

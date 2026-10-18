@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ERROR_CODES } from '../shared/errors';
-import { detectLanguage, translateError } from './lang';
+import { detectLanguage, loadStoredLang, saveStoredLang, translateError } from './lang';
 import de from './locales/de.json';
 import en from './locales/en.json';
 
@@ -59,5 +59,22 @@ describe('translateError', () => {
   it('falls back to the UNKNOWN text for unknown codes and legacy German strings', () => {
     expect(translateError(t, 'SOMETHING_NEW')).toBe(flatten(en)['error.UNKNOWN']);
     expect(translateError(t, 'Raum ist voll')).toBe(flatten(en)['error.UNKNOWN']);
+  });
+});
+
+describe('stored language', () => {
+  const throwing = () => {
+    throw new Error('storage blocked');
+  };
+  it('reads null when storage throws', () => {
+    expect(loadStoredLang({ getItem: throwing })).toBeNull();
+  });
+  it('ignores a failing write', () => {
+    expect(() => saveStoredLang({ setItem: throwing }, 'en')).not.toThrow();
+  });
+  it('round-trips through working storage', () => {
+    const data: Record<string, string> = {};
+    saveStoredLang({ setItem: (k, v) => void (data[k] = v) }, 'en');
+    expect(loadStoredLang({ getItem: (k) => data[k] ?? null })).toBe('en');
   });
 });

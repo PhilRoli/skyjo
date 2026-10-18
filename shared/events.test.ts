@@ -29,7 +29,7 @@ describe('describeEvents', () => {
     expect(describeEvents([{ kind: 'takeDiscard', by: 'A', value: 7 }], nameOf, ten)).toBe('Anna takes 7 from the discard pile');
     expect(describeEvents([{ kind: 'swap', by: 'A', value: 4, replaced: 9 }], nameOf, ten)).toBe('Anna replaces 9 with 4');
     expect(describeEvents([{ kind: 'discard', by: 'A', value: 4 }], nameOf, ten)).toBe('Anna discards 4');
-    expect(describeEvents([{ kind: 'flip', by: 'A', value: 6 }], nameOf, ten)).toBe('Anna reveals 6');
+    expect(describeEvents([{ kind: 'flip', by: 'A', value: 6 }], nameOf, ten)).toBe('Anna flips 6');
     expect(describeEvents([{ kind: 'clear', by: 'A', column: 1, value: -1 }], nameOf, ten)).toBe('Anna removes a column (-1)');
   });
 
@@ -40,7 +40,7 @@ describe('describeEvents', () => {
       { kind: 'flip', by: 'A', value: 6 },
     ] as const;
     expect(describeEvents([...events], nameOf, tde)).toBe('Anna zieht eine Karte, legt 4 ab, deckt 6 auf');
-    expect(describeEvents([...events], nameOf, ten)).toBe('Anna draws a card, discards 4, reveals 6');
+    expect(describeEvents([...events], nameOf, ten)).toBe('Anna draws a card, discards 4, flips 6');
   });
 
   it('names the player again when a column removal belongs to someone else', () => {

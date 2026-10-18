@@ -2,8 +2,8 @@
   "error": {
     "UNKNOWN": "Unknown error",
     "ALREADY_PLAYING": "You're already playing",
-    "ALREADY_REVEALED": "Card is already revealed",
-    "BOTS_CANNOT_CHAT": "Bots cannot write",
+    "ALREADY_REVEALED": "Card is already face up",
+    "BOTS_CANNOT_CHAT": "Bots can't chat",
     "CANNOT_REMOVE_SELF": "You can't remove yourself",
     "DECK_EMPTY": "No cards left",
     "DEV_MODE_OFF": "Dev mode is not enabled",
@@ -32,7 +32,7 @@
     "ROOM_FULL": "Room is full",
     "ROOM_NOT_FOUND": "Room not found",
     "ROUND_RUNNING": "The round is still running",
-    "SELF_TURN": "It's your own turn",
+    "SELF_TURN": "It's your turn",
     "SERVER_FULL": "Server is busy, please try again later",
     "SESSION_EXPIRED": "Session expired",
     "SLOT_EMPTY": "That slot is empty",
@@ -40,7 +40,7 @@
     "TOO_MANY_MESSAGES": "Too many messages",
     "TOO_MANY_ROOMS": "Too many rooms created",
     "TOO_MANY_SPECTATORS": "Too many spectators",
-    "TWO_REVEALED": "You've already revealed 2 cards",
+    "TWO_REVEALED": "You've already flipped 2 cards",
     "UNKNOWN_ACTION": "Unknown action",
     "UNKNOWN_PLAYER": "Unknown player",
     "REMOVED_FROM_ROOM": "You were removed from the room"
@@ -54,7 +54,9 @@
     "host": "Host",
     "nudged": "{{name}} nudged you",
     "disconnected": "Disconnected",
-    "nudgeTitle": "👉 {{name}} nudged you"
+    "nudgeTitle": "👉 {{name}} nudged you",
+    "switchDe": "Deutsch",
+    "switchEn": "English"
   },
   "home": {
     "name": "Name",
@@ -86,7 +88,7 @@
     "lastRound": "{{name}}: last round",
     "watching": "You're watching",
     "closeTitle": "End the round?",
-    "closeBody": "You are revealing your last card. Everyone else then gets one final turn.",
+    "closeBody": "You are flipping your last card. Everyone else then gets one final turn.",
     "closeConfirm": "End round",
     "gameOver": "Game over",
     "roundOver": "Round {{round}} over",
@@ -97,7 +99,7 @@
     "total": "Total",
     "out": "Out",
     "skip": "Skip",
-    "discardPile": "Discard",
+    "discardPile": "Discard pile",
     "discard": "Discard",
     "drawn": "Drawn",
     "devPile": "Dev · Deck ({{count}}) · Top: {{next}}",
@@ -114,7 +116,7 @@
     "rematch": "Rematch",
     "next": "Next round",
     "withdraw": "Withdraw request",
-    "playAlong": "Play along"
+    "playAlong": "Join in"
   },
   "chat": {
     "title": "Chat",
@@ -124,7 +126,7 @@
   },
   "leave": {
     "title": "Leave the room?",
-    "body": "You'll drop out of the running game."
+    "body": "You'll leave the current game."
   },
   "events": {
     "named": "{{name}} {{action}}",
@@ -132,7 +134,7 @@
     "takeDiscard": "takes {{value}} from the discard pile",
     "swap": "replaces {{replaced}} with {{value}}",
     "discard": "discards {{value}}",
-    "flip": "reveals {{value}}",
+    "flip": "flips {{value}}",
     "clear": "removes a column ({{value}})"
   },
   "rules": {
@@ -163,7 +165,7 @@
     "end": {
       "title": "End of the round",
       "items": [
-        "Once someone has revealed all their cards, everyone else gets one more turn. Then all cards are revealed and counted.",
+        "Once someone has flipped all their cards, everyone else gets one more turn. Then all cards are flipped and counted.",
         "Whoever ended the round must have the strictly lowest score. Otherwise their points are doubled (only if they are positive)."
       ]
     },

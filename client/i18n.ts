@@ -2,26 +2,17 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import de from './locales/de.json';
 import en from './locales/en.json';
-import { detectLanguage, LANG_KEY, type Lang } from './lang';
+import { detectLanguage, loadStoredLang, saveStoredLang, type Lang } from './lang';
 
-function stored(): string | null {
-  try {
-    return localStorage.getItem(LANG_KEY);
-  } catch {
-    return null;
-  }
-}
+// Wrapped so that even touching the `localStorage` global (which can throw) stays inside the try/catch.
+const storage = { getItem: (k: string) => localStorage.getItem(k), setItem: (k: string, v: string) => localStorage.setItem(k, v) };
 
 export function setLanguage(lang: Lang): void {
-  try {
-    localStorage.setItem(LANG_KEY, lang);
-  } catch {
-    /* storage unavailable: the choice just won't survive a reload */
-  }
+  saveStoredLang(storage, lang);
   void i18n.changeLanguage(lang);
 }
 
-const initial = detectLanguage(stored(), navigator.languages?.length ? navigator.languages : [navigator.language ?? '']);
+const initial = detectLanguage(loadStoredLang(storage), navigator.languages?.length ? navigator.languages : [navigator.language ?? '']);
 
 void i18n.use(initReactI18next).init({
   resources: { de: { translation: de }, en: { translation: en } },

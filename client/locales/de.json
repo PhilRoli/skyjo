@@ -54,7 +54,9 @@
     "host": "Host",
     "nudged": "{{name}} stupst dich an",
     "disconnected": "Verbindung getrennt",
-    "nudgeTitle": "👉 {{name}} stupst dich an"
+    "nudgeTitle": "👉 {{name}} stupst dich an",
+    "switchDe": "Deutsch",
+    "switchEn": "English"
   },
   "home": {
     "name": "Name",

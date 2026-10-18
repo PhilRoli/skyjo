@@ -15,10 +15,10 @@ export function LanguageSwitch() {
       aria-label={t('common.switch')}
       sx={{ position: 'fixed', left: 4, bottom: 4, opacity: 0.6 }}
     >
-      <ToggleButton value="de" sx={{ px: 1, py: 0.25, fontSize: 12 }}>
+      <ToggleButton value="de" aria-label={t('common.switchDe')} sx={{ px: 1, py: 0.25, fontSize: 12 }}>
         DE
       </ToggleButton>
-      <ToggleButton value="en" sx={{ px: 1, py: 0.25, fontSize: 12 }}>
+      <ToggleButton value="en" aria-label={t('common.switchEn')} sx={{ px: 1, py: 0.25, fontSize: 12 }}>
         EN
       </ToggleButton>
     </ToggleButtonGroup>
