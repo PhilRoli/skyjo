@@ -1,7 +1,6 @@
 {
   "name": "Skyjo",
   "short_name": "Skyjo",
-  "lang": "de",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
