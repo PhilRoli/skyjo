@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { canAct, decide, newBotMemory, observe, registerExtreme, unseen, DECK_AVERAGE } from './bot';
+import { canAct, decide, extremeFallbackCount, newBotMemory, observe, registerExtreme, resetExtremeFallback, unseen, DECK_AVERAGE } from './bot';
 import { installExtremeBot } from './extreme/load';
 import { FILL, cells, mkState, seeded } from './testUtils';
 import type { BotLevel } from './types';
@@ -252,6 +252,7 @@ describe('hard', () => {
 
 describe('extreme', () => {
   it('falls back to the hard policy (logged once) when the net is missing or throws: a table never freezes', () => {
+    resetExtremeFallback();
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     const views = [
       mkView([4, 5]),
@@ -270,6 +271,13 @@ describe('extreme', () => {
       expect(a).not.toBeNull();
     }
     expect(log).toHaveBeenCalledTimes(1);
+    expect(extremeFallbackCount()).toBe(2 * views.length);
+    resetExtremeFallback(); // counter back to 0 and the next failure is logged again
+    expect(extremeFallbackCount()).toBe(0);
+    decide(views[0], 'extreme', seeded(5), mem());
+    expect(extremeFallbackCount()).toBe(1);
+    expect(log).toHaveBeenCalledTimes(2);
+    resetExtremeFallback();
     log.mockRestore();
   });
 

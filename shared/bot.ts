@@ -295,6 +295,16 @@ export type ExtremeDecider = (view: PlayerView, rng: Rng, mem: BotMemory) => Act
 
 let extremeDecider: ExtremeDecider | null = null;
 let extremeFailureLogged = false;
+let extremeFallbacks = 0;
+
+/** How many extreme moves were played by the hard policy because the net path failed (simulations assert 0). */
+export const extremeFallbackCount = (): number => extremeFallbacks;
+
+/** Test hook: zero the counter and log the next failure again. */
+export function resetExtremeFallback(): void {
+  extremeFallbacks = 0;
+  extremeFailureLogged = false;
+}
 
 /** The net weights are large and must stay out of the browser bundle, so this module never imports them:
  * the server (and tests) register the extreme bot here, see `installExtremeBot` in shared/extreme/load.ts. */
@@ -321,6 +331,7 @@ export function decide(view: PlayerView, level: BotLevel, rng: Rng, mem: BotMemo
       // A bot that cannot move would freeze the table: play this move like the hard bot instead.
       if (!extremeFailureLogged) console.error('extreme bot failed, playing as hard instead', e);
       extremeFailureLogged = true;
+      extremeFallbacks++;
       level = 'hard';
     }
   }

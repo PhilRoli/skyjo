@@ -6,6 +6,14 @@ import { extremeNet, installExtremeBot, isPlaceholderSource, PLACEHOLDER_SOURCE,
 import { loadNet } from './net';
 import weights from './weights.json';
 
+/** First release that ships the extreme bot. */
+const EXTREME_RELEASE = '1.8.0';
+const versionAtLeast = (v: string, min: string): boolean => {
+  const [a, b] = [v, min].map((x) => x.split('.').map(Number));
+  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i];
+  return true;
+};
+
 describe('extreme weights', () => {
   it('have the exported schema and a source that says whether they are the trained ones', () => {
     expect(weights.version).toBe(1);
@@ -26,12 +34,21 @@ describe('extreme weights', () => {
     expect(isPlaceholderSource('')).toBe(false);
   });
 
-  it('release gate: 1.8.0 (Extrem) is not released with the placeholder weights', () => {
+  it('semver compare for the release gate', () => {
+    expect(versionAtLeast('1.8.0', EXTREME_RELEASE)).toBe(true);
+    expect(versionAtLeast('1.8.1', EXTREME_RELEASE)).toBe(true);
+    expect(versionAtLeast('1.10.0', EXTREME_RELEASE)).toBe(true);
+    expect(versionAtLeast('2.0.0', EXTREME_RELEASE)).toBe(true);
+    expect(versionAtLeast('1.7.9', EXTREME_RELEASE)).toBe(false);
+    expect(versionAtLeast('0.9.0', EXTREME_RELEASE)).toBe(false);
+  });
+
+  it('release gate: no release from 1.8.0 on (Extrem) with the placeholder weights', () => {
     // Intentionally RED on feature/extreme-bot until the final PPO weights are exported. Then it turns green by itself.
-    const blocked = isPlaceholderSource(WEIGHTS_SOURCE) && RELEASE_NOTES[0].version === '1.8.0';
+    const blocked = isPlaceholderSource(WEIGHTS_SOURCE) && versionAtLeast(RELEASE_NOTES[0].version, EXTREME_RELEASE);
     expect(
       blocked,
-      'final trained weights must be exported before releasing 1.8.0 (weights.json still has source "' +
+      'final trained weights must be exported before releasing ' + RELEASE_NOTES[0].version + ' (Extrem ships since ' + EXTREME_RELEASE + ') (weights.json still has source "' +
         WEIGHTS_SOURCE +
         '"): in ~/Development/skyjo-ml run `.venv/bin/python -m skyjo.export --ckpt <final.pt> ' +
         '--out ~/Development/skyjo/shared/extreme/weights.json --fixtures ~/Development/skyjo/shared/extreme/fixtures.json ' +

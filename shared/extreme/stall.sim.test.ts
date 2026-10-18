@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { extremeFallbackCount, resetExtremeFallback } from '../bot';
 import { playGame } from '../botSim.testUtils';
 import type { BotLevel } from '../types';
 import { installExtremeBot, WEIGHTS_SOURCE } from './load';
@@ -26,6 +27,7 @@ describe('extreme never stalls', () => {
     let rounds = 0;
     let forced = 0;
     let maxRoundSteps = 0;
+    resetExtremeFallback();
     for (let g = 0; g < 504; g++) {
       const { levels, target } = table(g);
       const r = playGame(levels, 90_000 + g, { target, roundStepCap: 3000 }); // throws StallError on a hang
@@ -35,6 +37,7 @@ describe('extreme never stalls', () => {
     }
     console.log(`extreme (${WEIGHTS_SOURCE}): ${rounds} rounds, guard took over in ${forced}, longest round ${maxRoundSteps} actions`);
     expect(rounds).toBeGreaterThan(504);
+    expect(extremeFallbackCount(), 'extreme moves played by the hard fallback').toBe(0); // every move came from the net
   }, 600_000);
 
   it('the table list covers every player count, target, kind and extreme seat', () => {

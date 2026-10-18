@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { extremeFallbackCount, resetExtremeFallback } from './bot';
 import { playGame } from './botSim.testUtils';
 import { installExtremeBot, isPlaceholderSource, WEIGHTS_SOURCE } from './extreme/load';
 import type { BotLevel } from './types';
@@ -31,12 +32,17 @@ const GATE_NOTE = `weights.json is a placeholder ("${WEIGHTS_SOURCE}"): strength
 const DUEL_MARGIN = 0.05;
 
 describe('bot simulation', () => {
+  // Every extreme move must come from the net: a silent fallback to hard would fake the results.
+  beforeEach(() => resetExtremeFallback());
+  const noFallback = () => expect(extremeFallbackCount(), 'extreme moves played by the hard fallback').toBe(0);
+
   it('never makes an illegal move and always finishes the game', () => {
     for (let g = 0; g < 60; g++) {
       const count = 2 + (g % 3);
       const levels = Array.from({ length: count }, (_, i) => POOL[(g + i * 3) % 4]);
       expect(() => playGame(levels, 500 + g)).not.toThrow();
     }
+    noFallback();
   }, 120_000);
 
   it('plays better the higher the level: hard < normal < easy (average points per round)', () => {
@@ -49,6 +55,7 @@ describe('bot simulation', () => {
   it('extreme scores at least 10 % fewer points per round than hard (extreme + hard + normal)', (ctx) => {
     const m = pointsPerRound(permutations<BotLevel>(['extreme', 'hard', 'normal']), 120, 3000);
     console.log(`average points per round (weights: ${WEIGHTS_SOURCE})`, m);
+    noFallback();
     if (PLACEHOLDER) ctx.skip(GATE_NOTE);
     expect(m.extreme!).toBeLessThan(m.hard! * 0.9);
   }, 180_000);
@@ -66,6 +73,7 @@ describe('bot simulation', () => {
       rates[n] = wins / games;
     }
     console.log(`extreme win share against hard (weights: ${WEIGHTS_SOURCE})`, rates);
+    noFallback();
     if (PLACEHOLDER) ctx.skip(GATE_NOTE);
     for (const n of [2, 3, 4]) expect(rates[n]).toBeGreaterThan(1 / n + DUEL_MARGIN);
   }, 300_000);
