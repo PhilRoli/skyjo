@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Action, BotLevel, ChatMessage } from '../shared/types';
 import type { ClientState } from '../shared/view';
+import i18n from './i18n';
 import { loadSession, request, saveSession, socket } from './socket';
 
 export function useGame() {
@@ -39,7 +40,7 @@ export function useGame() {
       const base = document.title;
       let n = 0;
       const id = setInterval(() => {
-        document.title = n % 2 === 0 ? `👉 ${from} stupst dich an` : base;
+        document.title = n % 2 === 0 ? i18n.t('common.nudgeTitle', { name: from }) : base;
         if (++n >= 10) {
           clearInterval(id);
           document.title = base;

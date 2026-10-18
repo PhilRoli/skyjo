@@ -44,6 +44,13 @@ describe('locales', () => {
   });
 });
 
+describe('nudge tab title', () => {
+  it('has a localized text with the sender name in both languages', () => {
+    expect(flatten(de)['common.nudgeTitle']).toContain('{{name}}');
+    expect(flatten(en)['common.nudgeTitle']).toContain('{{name}}');
+  });
+});
+
 describe('translateError', () => {
   const t = ((key: string) => (key in flatten(en) ? (flatten(en)[key] as string) : key)) as never;
   it('translates known codes', () => {

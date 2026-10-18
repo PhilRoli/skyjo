@@ -53,7 +53,8 @@
     "waitHost": "Waiting for the host",
     "host": "Host",
     "nudged": "{{name}} nudged you",
-    "disconnected": "Disconnected"
+    "disconnected": "Disconnected",
+    "nudgeTitle": "👉 {{name}} nudged you"
   },
   "home": {
     "name": "Name",

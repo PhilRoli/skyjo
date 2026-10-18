@@ -53,7 +53,8 @@
     "waitHost": "Warte auf den Host",
     "host": "Host",
     "nudged": "{{name}} stupst dich an",
-    "disconnected": "Verbindung getrennt"
+    "disconnected": "Verbindung getrennt",
+    "nudgeTitle": "👉 {{name}} stupst dich an"
   },
   "home": {
     "name": "Name",
