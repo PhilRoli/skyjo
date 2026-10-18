@@ -13,6 +13,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ChatMessage } from '../../shared/types';
 
 interface Props {
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export function Chat({ messages, me, onSend }: Props) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [seen, setSeen] = useState(messages.length);
@@ -43,8 +45,8 @@ export function Chat({ messages, me, onSend }: Props) {
 
   return (
     <>
-      <Tooltip title="Chat">
-        <Fab color="primary" size="medium" aria-label="Chat" onClick={() => setOpen(true)} sx={{ position: 'fixed', right: 16, bottom: 56 }}>
+      <Tooltip title={t('chat.title')}>
+        <Fab color="primary" size="medium" aria-label={t('chat.title')} onClick={() => setOpen(true)} sx={{ position: 'fixed', right: 16, bottom: 56 }}>
           <Badge color="error" badgeContent={unread}>
             <ChatIcon />
           </Badge>
@@ -54,9 +56,9 @@ export function Chat({ messages, me, onSend }: Props) {
         <Box sx={{ width: { xs: '100vw', sm: 360 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2 }}>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              Chat
+              {t('chat.title')}
             </Typography>
-            <IconButton aria-label="Schließen" onClick={() => setOpen(false)}>
+            <IconButton aria-label={t('common.close')} onClick={() => setOpen(false)}>
               <CloseIcon />
             </IconButton>
           </Box>
@@ -64,7 +66,7 @@ export function Chat({ messages, me, onSend }: Props) {
             {messages.map((m) => (
               <ListItem key={m.id} sx={{ py: 0.25 }}>
                 <ListItemText
-                  primary={m.from === me ? 'Du' : m.name}
+                  primary={m.from === me ? t('chat.you') : m.name}
                   secondary={m.text}
                   slotProps={{ secondary: { sx: { color: 'text.primary', wordBreak: 'break-word' } } }}
                 />
@@ -77,13 +79,13 @@ export function Chat({ messages, me, onSend }: Props) {
               fullWidth
               size="small"
               value={text}
-              placeholder="Nachricht"
+              placeholder={t('chat.placeholder')}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && send()}
               slotProps={{ htmlInput: { maxLength: 200 } }}
             />
-            <Tooltip title="Senden">
-              <IconButton color="primary" aria-label="Senden" onClick={send}>
+            <Tooltip title={t('chat.send')}>
+              <IconButton color="primary" aria-label={t('chat.send')} onClick={send}>
                 <SendIcon />
               </IconButton>
             </Tooltip>

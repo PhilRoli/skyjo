@@ -16,9 +16,9 @@ import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
+import { useTranslation } from 'react-i18next';
 import { ALLOWED_TARGETS, BOT_LEVELS, type BotLevel } from '../../shared/types';
 import type { ClientState } from '../../shared/view';
-import { BOT_LEVEL_LABEL } from '../botLevels';
 
 interface Props {
   state: ClientState;
@@ -30,6 +30,7 @@ interface Props {
 }
 
 export function Lobby({ state, onStart, onRemove, onTarget, onAddBot, onLeave }: Props) {
+  const { t } = useTranslation();
   const [level, setLevel] = useState<BotLevel>('normal');
   const { room, me } = state;
   const isHost = room.hostId === me;
@@ -39,10 +40,10 @@ export function Lobby({ state, onStart, onRemove, onTarget, onAddBot, onLeave }:
   return (
     <Stack spacing={2} sx={{ mt: 4 }}>
       <Typography variant="h4" sx={{ fontWeight: 800 }}>
-        Raum {room.code}
+        {t('lobby.room', { code: room.code })}
       </Typography>
       <Button startIcon={<ContentCopyIcon />} onClick={copyLink} sx={{ alignSelf: 'flex-start' }}>
-        Link kopieren
+        {t('lobby.copyLink')}
       </Button>
       <List>
         {room.members.map((m) => (
@@ -50,8 +51,8 @@ export function Lobby({ state, onStart, onRemove, onTarget, onAddBot, onLeave }:
             key={m.id}
             secondaryAction={
               isHost && m.id !== me ? (
-                <Tooltip title="Entfernen">
-                  <IconButton aria-label="Entfernen" onClick={() => onRemove(m.id)}>
+                <Tooltip title={t('lobby.remove')}>
+                  <IconButton aria-label={t('lobby.remove')} onClick={() => onRemove(m.id)}>
                     <CloseIcon />
                   </IconButton>
                 </Tooltip>
@@ -64,8 +65,8 @@ export function Lobby({ state, onStart, onRemove, onTarget, onAddBot, onLeave }:
               <FiberManualRecordIcon fontSize="small" color={m.connected ? 'success' : 'disabled'} sx={{ mr: 1 }} />
             )}
             <ListItemText primary={m.name} />
-            {m.bot && <Chip size="small" label={BOT_LEVEL_LABEL[m.bot.level]} sx={{ mr: 4 }} />}
-            {m.id === room.hostId && <Chip size="small" label="Host" sx={{ mr: 4 }} />}
+            {m.bot && <Chip size="small" label={t(`botLevel.${m.bot.level}`)} sx={{ mr: 4 }} />}
+            {m.id === room.hostId && <Chip size="small" label={t('common.host')} sx={{ mr: 4 }} />}
           </ListItem>
         ))}
       </List>
@@ -74,18 +75,18 @@ export function Lobby({ state, onStart, onRemove, onTarget, onAddBot, onLeave }:
           <Select size="small" value={level} onChange={(e) => setLevel(e.target.value as BotLevel)}>
             {BOT_LEVELS.map((l) => (
               <MenuItem key={l} value={l}>
-                {BOT_LEVEL_LABEL[l]}
+                {t(`botLevel.${l}`)}
               </MenuItem>
             ))}
           </Select>
           <Button startIcon={<SmartToyIcon />} disabled={room.members.length >= 8} onClick={() => onAddBot(level)}>
-            Bot hinzufügen
+            {t('lobby.addBot')}
           </Button>
         </Stack>
       )}
       <Stack spacing={1}>
         <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-          Ziel
+          {t('lobby.target')}
         </Typography>
         <ToggleButtonGroup
           exclusive
@@ -94,22 +95,22 @@ export function Lobby({ state, onStart, onRemove, onTarget, onAddBot, onLeave }:
           disabled={!isHost}
           onChange={(_e, v: number | null) => v !== null && onTarget(v)}
         >
-          {ALLOWED_TARGETS.map((t) => (
-            <ToggleButton key={t} value={t}>
-              {t}
+          {ALLOWED_TARGETS.map((target) => (
+            <ToggleButton key={target} value={target}>
+              {target}
             </ToggleButton>
           ))}
         </ToggleButtonGroup>
       </Stack>
       {isHost ? (
         <Button variant="contained" size="large" disabled={room.members.length < 2} onClick={onStart}>
-          Spiel starten
+          {t('lobby.start')}
         </Button>
       ) : (
-        <Typography>Warte auf den Host</Typography>
+        <Typography>{t('common.waitHost')}</Typography>
       )}
       <Button color="inherit" onClick={onLeave}>
-        Verlassen
+        {t('common.leave')}
       </Button>
     </Stack>
   );

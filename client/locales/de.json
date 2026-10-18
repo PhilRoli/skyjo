@@ -46,6 +46,92 @@
     "REMOVED_FROM_ROOM": "Du wurdest aus dem Raum entfernt"
   },
   "common": {
-    "switch": "Sprache"
+    "switch": "Sprache",
+    "close": "Schließen",
+    "cancel": "Abbrechen",
+    "leave": "Verlassen",
+    "waitHost": "Warte auf den Host",
+    "host": "Host",
+    "nudged": "{{name}} stupst dich an",
+    "disconnected": "Verbindung getrennt"
+  },
+  "home": {
+    "name": "Name",
+    "create": "Raum erstellen",
+    "join": "Beitreten",
+    "code": "Raumcode"
+  },
+  "lobby": {
+    "room": "Raum {{code}}",
+    "copyLink": "Link kopieren",
+    "remove": "Entfernen",
+    "addBot": "Bot hinzufügen",
+    "target": "Ziel",
+    "start": "Spiel starten"
+  },
+  "botLevel": {
+    "easy": "Leicht",
+    "normal": "Normal",
+    "hard": "Stark"
+  },
+  "table": {
+    "flipTwo": "Decke 2 Karten auf ({{count}}/2)",
+    "waitOthers": "Warte auf die anderen",
+    "yourTurn": "Du bist dran",
+    "turnOf": "{{name}} ist dran",
+    "swapOrDiscard": "Tauschen oder ablegen",
+    "swapCard": "Karte tauschen",
+    "flipOne": "Decke eine Karte auf",
+    "lastRound": "{{name}}: letzte Runde",
+    "watching": "Du schaust zu",
+    "closeTitle": "Runde beenden?",
+    "closeBody": "Du deckst deine letzte Karte auf. Danach hat jeder andere noch einen letzten Zug.",
+    "closeConfirm": "Zudrehen",
+    "gameOver": "Spiel beendet",
+    "roundOver": "Runde {{round}} beendet",
+    "target": "Ziel {{target}}",
+    "signedUp": "{{count}} angemeldet",
+    "nudge": "Anstupsen",
+    "current": "Aktuell",
+    "total": "Gesamt",
+    "out": "ausgeschieden",
+    "skip": "Überspringen",
+    "discardPile": "Ablage",
+    "discard": "Ablegen",
+    "drawn": "Gezogen",
+    "devPile": "Dev · Stapel ({{count}}) · Oben: {{next}}",
+    "devDrawn": " · Gezogen: {{value}}",
+    "withdraw": "Anmeldung zurückziehen",
+    "signUp": "Zur Revanche anmelden",
+    "pageTitle": "● Du bist dran – Skyjo"
+  },
+  "score": {
+    "player": "Spieler",
+    "round": "Runde",
+    "wantsToPlay_one": "{{count}} Zuschauer möchte mitspielen",
+    "wantsToPlay_other": "{{count}} Zuschauer möchten mitspielen",
+    "rematch": "Revanche",
+    "next": "Nächste Runde",
+    "withdraw": "Anfrage zurückziehen",
+    "playAlong": "Mitspielen"
+  },
+  "chat": {
+    "title": "Chat",
+    "you": "Du",
+    "placeholder": "Nachricht",
+    "send": "Senden"
+  },
+  "leave": {
+    "title": "Raum verlassen?",
+    "body": "Du scheidest aus dem laufenden Spiel aus."
+  },
+  "events": {
+    "named": "{{name}} {{action}}",
+    "draw": "zieht eine Karte",
+    "takeDiscard": "nimmt {{value}} von der Ablage",
+    "swap": "ersetzt {{replaced}} durch {{value}}",
+    "discard": "legt {{value}} ab",
+    "flip": "deckt {{value}} auf",
+    "clear": "entfernt Spalte ({{value}})"
   }
 }

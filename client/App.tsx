@@ -65,7 +65,7 @@ export function App() {
             <RulesButton />
           </div>
         </div>
-        {!g.connected && !g.booting && <Alert severity="warning">Verbindung getrennt</Alert>}
+        {!g.connected && !g.booting && <Alert severity="warning">{t('common.disconnected')}</Alert>}
         <Suspense fallback={null}>
         {g.booting ? null : g.state === null ? (
           <Home initialCode={initialCode} onCreate={g.create} onJoin={g.join} />
@@ -82,7 +82,7 @@ export function App() {
       {g.nudgedBy !== null && <NudgeGlow />}
       <Snackbar open={g.nudgedBy !== null} autoHideDuration={5000} onClose={g.clearNudge}>
         <Alert severity="info" onClose={g.clearNudge}>
-          {g.nudgedBy} stupst dich an
+          {t('common.nudged', { name: g.nudgedBy })}
         </Alert>
       </Snackbar>
       <Snackbar open={g.error !== null} autoHideDuration={4000} onClose={g.clearError}>

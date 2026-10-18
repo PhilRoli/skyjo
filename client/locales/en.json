@@ -46,6 +46,92 @@
     "REMOVED_FROM_ROOM": "You were removed from the room"
   },
   "common": {
-    "switch": "Language"
+    "switch": "Language",
+    "close": "Close",
+    "cancel": "Cancel",
+    "leave": "Leave",
+    "waitHost": "Waiting for the host",
+    "host": "Host",
+    "nudged": "{{name}} nudged you",
+    "disconnected": "Disconnected"
+  },
+  "home": {
+    "name": "Name",
+    "create": "Create room",
+    "join": "Join",
+    "code": "Room code"
+  },
+  "lobby": {
+    "room": "Room {{code}}",
+    "copyLink": "Copy link",
+    "remove": "Remove",
+    "addBot": "Add bot",
+    "target": "Target",
+    "start": "Start game"
+  },
+  "botLevel": {
+    "easy": "Easy",
+    "normal": "Normal",
+    "hard": "Hard"
+  },
+  "table": {
+    "flipTwo": "Flip 2 cards ({{count}}/2)",
+    "waitOthers": "Waiting for the others",
+    "yourTurn": "Your turn",
+    "turnOf": "{{name}}'s turn",
+    "swapOrDiscard": "Swap or discard",
+    "swapCard": "Swap the card",
+    "flipOne": "Flip a card",
+    "lastRound": "{{name}}: last round",
+    "watching": "You're watching",
+    "closeTitle": "End the round?",
+    "closeBody": "You are revealing your last card. Everyone else then gets one final turn.",
+    "closeConfirm": "End round",
+    "gameOver": "Game over",
+    "roundOver": "Round {{round}} over",
+    "target": "Target {{target}}",
+    "signedUp": "{{count}} signed up",
+    "nudge": "Nudge",
+    "current": "Current",
+    "total": "Total",
+    "out": "Out",
+    "skip": "Skip",
+    "discardPile": "Discard",
+    "discard": "Discard",
+    "drawn": "Drawn",
+    "devPile": "Dev · Deck ({{count}}) · Top: {{next}}",
+    "devDrawn": " · Drawn: {{value}}",
+    "withdraw": "Withdraw sign-up",
+    "signUp": "Sign up for rematch",
+    "pageTitle": "● Your turn – Skyjo"
+  },
+  "score": {
+    "player": "Player",
+    "round": "Round",
+    "wantsToPlay_one": "{{count}} spectator wants to play",
+    "wantsToPlay_other": "{{count}} spectators want to play",
+    "rematch": "Rematch",
+    "next": "Next round",
+    "withdraw": "Withdraw request",
+    "playAlong": "Play along"
+  },
+  "chat": {
+    "title": "Chat",
+    "you": "You",
+    "placeholder": "Message",
+    "send": "Send"
+  },
+  "leave": {
+    "title": "Leave the room?",
+    "body": "You'll drop out of the running game."
+  },
+  "events": {
+    "named": "{{name}} {{action}}",
+    "draw": "draws a card",
+    "takeDiscard": "takes {{value}} from the discard pile",
+    "swap": "replaces {{replaced}} with {{value}}",
+    "discard": "discards {{value}}",
+    "flip": "reveals {{value}}",
+    "clear": "removes a column ({{value}})"
   }
 }

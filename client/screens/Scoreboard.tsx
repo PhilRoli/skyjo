@@ -9,6 +9,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import { useTranslation } from 'react-i18next';
 import type { PlayerView } from '../../shared/view';
 
 interface Props {
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export function Scoreboard({ game, isHost, spectator, wantsToPlay, playRequests, next, rematch, play, leave }: Props) {
+  const { t } = useTranslation();
   const over = game.phase === 'gameOver';
   const last = game.lastRound;
   const rows = [...game.players].sort((a, b) => a.total - b.total);
@@ -32,7 +34,7 @@ export function Scoreboard({ game, isHost, spectator, wantsToPlay, playRequests,
     <Paper sx={{ p: 2 }}>
       <Stack spacing={2}>
         <Typography variant="h5" sx={{ fontWeight: 800 }}>
-          {over ? 'Spiel beendet' : `Runde ${game.round} beendet`}
+          {over ? t('table.gameOver') : t('table.roundOver', { round: game.round })}
         </Typography>
         {over && (
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -45,9 +47,9 @@ export function Scoreboard({ game, isHost, spectator, wantsToPlay, playRequests,
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Spieler</TableCell>
-              <TableCell align="right">Runde</TableCell>
-              <TableCell align="right">Gesamt</TableCell>
+              <TableCell>{t('score.player')}</TableCell>
+              <TableCell align="right">{t('score.round')}</TableCell>
+              <TableCell align="right">{t('table.total')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -66,22 +68,22 @@ export function Scoreboard({ game, isHost, spectator, wantsToPlay, playRequests,
         {isHost ? (
           <>
             {over && playRequests > 0 && (
-              <Typography variant="body2">{playRequests} Zuschauer möchten mitspielen</Typography>
+              <Typography variant="body2">{t('score.wantsToPlay', { count: playRequests })}</Typography>
             )}
             <Button variant="contained" onClick={over ? rematch : next}>
-              {over ? 'Revanche' : 'Nächste Runde'}
+              {over ? t('score.rematch') : t('score.next')}
             </Button>
           </>
         ) : spectator && over ? (
           <Button variant="outlined" onClick={play}>
-            {wantsToPlay ? 'Anfrage zurückziehen' : 'Mitspielen'}
+            {wantsToPlay ? t('score.withdraw') : t('score.playAlong')}
           </Button>
         ) : (
-          <Typography>Warte auf den Host</Typography>
+          <Typography>{t('common.waitHost')}</Typography>
         )}
         {over && (
           <Button color="inherit" onClick={leave}>
-            Verlassen
+            {t('common.leave')}
           </Button>
         )}
       </Stack>
