@@ -75,7 +75,8 @@
   "botLevel": {
     "easy": "Leicht",
     "normal": "Normal",
-    "hard": "Stark"
+    "hard": "Stark",
+    "extreme": "Extrem"
   },
   "table": {
     "flipTwo": "Decke 2 Karten auf ({{count}}/2)",
