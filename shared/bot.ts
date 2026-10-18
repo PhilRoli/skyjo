@@ -294,6 +294,7 @@ const POLICIES: Record<Exclude<BotLevel, 'extreme'>, Policy> = { easy: easyPolic
 export type ExtremeDecider = (view: PlayerView, rng: Rng, mem: BotMemory) => Action;
 
 let extremeDecider: ExtremeDecider | null = null;
+let extremeFailureLogged = false;
 
 /** The net weights are large and must stay out of the browser bundle, so this module never imports them:
  * the server (and tests) register the extreme bot here, see `installExtremeBot` in shared/extreme/load.ts. */
@@ -313,8 +314,15 @@ export function canAct(view: PlayerView): boolean {
 export function decide(view: PlayerView, level: BotLevel, rng: Rng, mem: BotMemory): Action | null {
   if (!canAct(view)) return null;
   if (level === 'extreme') {
-    if (!extremeDecider) throw new Error('extreme bot is not installed (installExtremeBot)');
-    return extremeDecider(view, rng, mem);
+    try {
+      if (!extremeDecider) throw new Error('extreme bot is not installed (installExtremeBot)');
+      return extremeDecider(view, rng, mem);
+    } catch (e) {
+      // A bot that cannot move would freeze the table: play this move like the hard bot instead.
+      if (!extremeFailureLogged) console.error('extreme bot failed, playing as hard instead', e);
+      extremeFailureLogged = true;
+      level = 'hard';
+    }
   }
   const me = view.players.find((p) => p.id === view.me)!;
   const ctx: Ctx = {

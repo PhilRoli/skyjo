@@ -8,8 +8,12 @@ import weights from './weights.json';
 /** Where the weights come from, as written by the export (`--source`). */
 export const WEIGHTS_SOURCE: string = weights.source;
 
-/** Placeholder weights are only good enough for wiring and safety tests, not for the strength tests. */
-export const isPlaceholderSource = (source: string): boolean => /placeholder/i.test(source);
+/** `source` of the placeholder weights (imitation net, exported in Task 9). The final export uses
+ * `--source "ppo <name>"`; any other source counts as the trained weights. */
+export const PLACEHOLDER_SOURCE = 'imit.pt placeholder';
+
+/** Placeholder weights are only good enough for wiring and safety tests, not for the strength tests. Exact match. */
+export const isPlaceholderSource = (source: string): boolean => source.trim() === PLACEHOLDER_SOURCE;
 
 let net: Net | null = null;
 

@@ -1,4 +1,4 @@
-// Test helper: whole games with bots only, straight through the rules (no network).
+// Test-only helper (never imported by app code): whole games with bots only, straight through the rules (no network).
 import { canAct, decide, newBotMemory, observe, type BotMemory, type ExtremeDecider } from './bot';
 import { apply, newGame, startRound } from './rules';
 import { seeded } from './testUtils';

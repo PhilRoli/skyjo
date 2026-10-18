@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { playGame } from './botSim';
+import { playGame } from './botSim.testUtils';
 import { installExtremeBot, isPlaceholderSource, WEIGHTS_SOURCE } from './extreme/load';
 import type { BotLevel } from './types';
 

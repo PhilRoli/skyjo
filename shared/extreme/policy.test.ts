@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newBotMemory } from '../bot';
-import { playGame, StallError } from '../botSim';
+import { playGame, StallError } from '../botSim.testUtils';
 import { seeded } from '../testUtils';
 import type { BotLevel } from '../types';
 import type { PlayerView, PublicCell } from '../view';

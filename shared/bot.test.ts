@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { canAct, decide, newBotMemory, observe, registerExtreme, unseen, DECK_AVERAGE } from './bot';
 import { installExtremeBot } from './extreme/load';
 import { FILL, cells, mkState, seeded } from './testUtils';
@@ -251,9 +251,29 @@ describe('hard', () => {
 });
 
 describe('extreme', () => {
-  it('refuses to play before the net is installed, then plays every phase through the net', () => {
+  it('falls back to the hard policy (logged once) when the net is missing or throws: a table never freezes', () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const views = [
+      mkView([4, 5]),
+      mkView([4, 5], { phase: 'place', drawn: 2, drawnFrom: 'deck' }),
+      mkView([4, 5], { phase: 'flipAfterDiscard' }),
+      mkView([], { phase: 'initialFlip', current: null }),
+    ];
     registerExtreme(null);
-    expect(() => decide(mkView([]), 'extreme', never, mem())).toThrow(/not installed/);
+    for (const v of views) expect(decide(v, 'extreme', seeded(3), mem())).toEqual(decide(v, 'hard', seeded(3), mem()));
+    registerExtreme(() => {
+      throw new Error('bad input size');
+    });
+    for (const v of views) {
+      const a = decide(v, 'extreme', seeded(4), mem());
+      expect(a).toEqual(decide(v, 'hard', seeded(4), mem()));
+      expect(a).not.toBeNull();
+    }
+    expect(log).toHaveBeenCalledTimes(1);
+    log.mockRestore();
+  });
+
+  it('plays every phase through the net once installed', () => {
     expect(decide(mkView([], { current: 'opp' }), 'extreme', never, mem())).toBeNull(); // nothing to do: no net needed
     installExtremeBot();
     expect(decide(mkView([], { phase: 'initialFlip', current: null }), 'extreme', never, mem())).toMatchObject({ type: 'flipInitial' });
