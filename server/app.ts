@@ -1,3 +1,4 @@
+import { GameError, errorCode } from '../shared/errors';
 import { existsSync } from 'node:fs';
 import { createServer } from 'node:http';
 import path from 'node:path';
@@ -112,7 +113,7 @@ export function createSkyjoServer(
     };
 
     const session = () => {
-      if (!data.code || !data.playerId) throw new Error('Nicht in einem Raum');
+      if (!data.code || !data.playerId) throw new GameError('NOT_IN_ROOM');
       return { code: data.code, playerId: data.playerId };
     };
 
@@ -124,7 +125,7 @@ export function createSkyjoServer(
           ack?.({ ok: true, ...extra });
         } catch (e) {
           try {
-            ack?.({ ok: false, error: e instanceof Error ? e.message : 'Unbekannter Fehler' });
+            ack?.({ ok: false, error: errorCode(e) });
           } catch {
             /* a broken ack must never take the process down */
           }
@@ -137,7 +138,7 @@ export function createSkyjoServer(
       const createdAt = (createdByIp.get(ip) ?? []).filter((t) => now - t <= CREATE_WINDOW_MS);
       if (createdAt.length >= CREATE_LIMIT) {
         createdByIp.set(ip, createdAt);
-        throw new Error('Zu viele Räume erstellt');
+        throw new GameError('TOO_MANY_ROOMS');
       }
       createdByIp.set(ip, [...createdAt, now]);
       const r = manager.create(name);
@@ -176,7 +177,7 @@ export function createSkyjoServer(
       return { id };
     });
     on('dev:set', ({ on: enable }) => {
-      if (!devMode) throw new Error('Dev-Modus ist nicht aktiv');
+      if (!devMode) throw new GameError('DEV_MODE_OFF');
       const s = session();
       const key = personal(s.code, s.playerId);
       if (enable) devOn.add(key);
