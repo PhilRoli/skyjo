@@ -27,6 +27,18 @@ export interface BotMemory {
   deckCount: number;
   discard: number[];
   prevEvents: GameEvent[];
+  /** Repetition guard of the extreme bot (see shared/extreme/policy.ts); unused by the other levels. */
+  stall?: StallGuard;
+}
+
+export interface StallGuard {
+  round: number;
+  /** Own turns (draw decisions) in this round. */
+  turns: number;
+  /** How often each table signature came up at one of my decisions in this round. */
+  seen: Map<string, number>;
+  /** Once set, every own turn of this round turns a hidden card face up. */
+  forced: boolean;
 }
 
 export const newBotMemory = (): BotMemory => ({ round: -1, seq: -1, deckCount: Infinity, discard: [], prevEvents: [] });
@@ -275,7 +287,19 @@ const hardPolicy: Policy = {
   flip: (c) => bestFlip(c, unseen(c.view, c.mem)),
 };
 
-const POLICIES: Record<BotLevel, Policy> = { easy: easyPolicy, normal: normalPolicy, hard: hardPolicy };
+const POLICIES: Record<Exclude<BotLevel, 'extreme'>, Policy> = { easy: easyPolicy, normal: normalPolicy, hard: hardPolicy };
+
+// ---------------------------------------------------------------- extreme: neural net, registered by the server
+
+export type ExtremeDecider = (view: PlayerView, rng: Rng, mem: BotMemory) => Action;
+
+let extremeDecider: ExtremeDecider | null = null;
+
+/** The net weights are large and must stay out of the browser bundle, so this module never imports them:
+ * the server (and tests) register the extreme bot here, see `installExtremeBot` in shared/extreme/load.ts. */
+export function registerExtreme(decider: ExtremeDecider | null): void {
+  extremeDecider = decider;
+}
 
 // ---------------------------------------------------------------- public API
 
@@ -288,6 +312,10 @@ export function canAct(view: PlayerView): boolean {
 
 export function decide(view: PlayerView, level: BotLevel, rng: Rng, mem: BotMemory): Action | null {
   if (!canAct(view)) return null;
+  if (level === 'extreme') {
+    if (!extremeDecider) throw new Error('extreme bot is not installed (installExtremeBot)');
+    return extremeDecider(view, rng, mem);
+  }
   const me = view.players.find((p) => p.id === view.me)!;
   const ctx: Ctx = {
     view,

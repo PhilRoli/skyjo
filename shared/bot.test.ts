@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { canAct, decide, newBotMemory, observe, unseen, DECK_AVERAGE } from './bot';
+import { canAct, decide, newBotMemory, observe, registerExtreme, unseen, DECK_AVERAGE } from './bot';
+import { installExtremeBot } from './extreme/load';
 import { FILL, cells, mkState, seeded } from './testUtils';
 import type { BotLevel } from './types';
 import { viewFor, type PlayerView, type PublicCell } from './view';
@@ -246,5 +247,41 @@ describe('hard', () => {
   it('flips the hidden card in a column that already holds two equal cards', () => {
     const v = mkView([1, 'h', 'h', 4, 4, 'h', 'h', 'h', 'h', 'h', 'h', 'h'], { phase: 'flipAfterDiscard' });
     expect(decide(v, 'hard', never, memWith(v))).toEqual({ type: 'flipHidden', slot: 5 });
+  });
+});
+
+describe('extreme', () => {
+  it('refuses to play before the net is installed, then plays every phase through the net', () => {
+    registerExtreme(null);
+    expect(() => decide(mkView([]), 'extreme', never, mem())).toThrow(/not installed/);
+    expect(decide(mkView([], { current: 'opp' }), 'extreme', never, mem())).toBeNull(); // nothing to do: no net needed
+    installExtremeBot();
+    expect(decide(mkView([], { phase: 'initialFlip', current: null }), 'extreme', never, mem())).toMatchObject({ type: 'flipInitial' });
+    expect(decide(mkView([4, 5], { phase: 'initialFlip', current: null }), 'extreme', never, mem())).toBeNull();
+    expect(['drawFromDeck', 'takeDiscard']).toContain(decide(mkView([4, 5]), 'extreme', never, mem())!.type);
+    expect(['swap', 'discardDrawn']).toContain(decide(mkView([4, 5], { phase: 'place', drawn: 2, drawnFrom: 'deck' }), 'extreme', never, mem())!.type);
+    expect(decide(mkView([4, 5], { phase: 'place', drawn: 2, drawnFrom: 'discard' }), 'extreme', never, mem())!.type).toBe('swap');
+    const flip = decide(mkView([4, 5], { phase: 'flipAfterDiscard' }), 'extreme', never, mem()) as { type: string; slot: number };
+    expect(flip.type).toBe('flipHidden');
+    expect(flip.slot).toBeGreaterThanOrEqual(2);
+  });
+
+  it('decides the same for the same view, whatever the hidden cards, the deck or the rng', () => {
+    installExtremeBot();
+    const s1 = mkState([cells(FILL, [2, 5]), cells(FILL, [0])]);
+    const s2 = mkState([cells([...FILL.slice(0, 2), 12, ...FILL.slice(3)], [2, 5]), cells(FILL, [0])], { deck: [1, 1, 1, 1] });
+    expect(viewFor(s1, 'A')).toEqual(viewFor(s2, 'A'));
+    expect(decide(viewFor(s1, 'A'), 'extreme', seeded(1), mem())).toEqual(decide(viewFor(s2, 'A'), 'extreme', seeded(2), mem()));
+  });
+
+  it('is fast: 1000 decisions in under 2 s', () => {
+    installExtremeBot();
+    const views = [mkView([4, 5]), mkView([4, 5], { phase: 'place', drawn: 2, drawnFrom: 'deck' }), mkView([4, 5], { phase: 'flipAfterDiscard' })];
+    for (let i = 0; i < 50; i++) decide(views[i % 3], 'extreme', never, mem()); // warm up the JIT
+    const t = performance.now();
+    for (let i = 0; i < 1000; i++) decide(views[i % 3], 'extreme', never, mem());
+    const ms = performance.now() - t;
+    console.log(`extreme: 1000 decisions in ${ms.toFixed(0)} ms`);
+    expect(ms).toBeLessThan(2000);
   });
 });
