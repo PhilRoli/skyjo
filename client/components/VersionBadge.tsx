@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
@@ -20,6 +21,8 @@ interface Props {
 const DEV_TAPS = 5;
 
 export function VersionBadge({ devAllowed, devOn, onToggleDev }: Props) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage === 'de' ? 'de' : 'en';
   const [open, setOpen] = useState(false);
   const taps = useRef({ n: 0, last: 0 });
   // Hidden dev toggle: tap the badge five times in quick succession (only works when the server allows it).
@@ -35,12 +38,12 @@ export function VersionBadge({ devAllowed, devOn, onToggleDev }: Props) {
   };
   return (
     <>
-      <Tooltip title="Release Notes">
+      <Tooltip title={t('releaseNotes.title')}>
         <Button
           size="small"
           color="inherit"
           onClick={click}
-          aria-label={`Release Notes ${__APP_VERSION__}`}
+          aria-label={`${t('releaseNotes.title')} ${__APP_VERSION__}`}
           sx={{ position: 'fixed', right: 4, bottom: 0, opacity: 0.5, minWidth: 0, textTransform: 'none', fontSize: 12 }}
         >
           {__APP_VERSION__}
@@ -49,15 +52,15 @@ export function VersionBadge({ devAllowed, devOn, onToggleDev }: Props) {
       </Tooltip>
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm" scroll="paper">
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 800 }}>
-          Neuigkeiten
+          {t('releaseNotes.heading')}
           <span>
             <Tooltip title="GitHub">
               <IconButton aria-label="GitHub" component="a" href="https://github.com/PhilRoli/skyjo" target="_blank" rel="noopener noreferrer">
                 <GitHubIcon />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Schließen">
-              <IconButton aria-label="Schließen" onClick={() => setOpen(false)}>
+            <Tooltip title={t('common.close')}>
+              <IconButton aria-label={t('common.close')} onClick={() => setOpen(false)}>
                 <CloseIcon />
               </IconButton>
             </Tooltip>
@@ -68,11 +71,11 @@ export function VersionBadge({ devAllowed, devOn, onToggleDev }: Props) {
             {RELEASE_NOTES.map((r) => (
               <Stack key={r.version} spacing={0.5}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                  {r.version} · {r.title}
+                  {r.version} · {r.title[lang]}
                 </Typography>
-                {r.items.map((t) => (
-                  <Typography key={t} variant="body2">
-                    • {t}
+                {r.items[lang].map((item) => (
+                  <Typography key={item} variant="body2">
+                    • {item}
                   </Typography>
                 ))}
               </Stack>

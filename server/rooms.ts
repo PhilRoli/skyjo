@@ -1,3 +1,4 @@
+import { GameError } from '../shared/errors';
 import { randomUUID } from 'node:crypto';
 import { apply, newGame, removePlayer, startRound } from '../shared/rules';
 import { shuffle } from '../shared/deck';
@@ -55,7 +56,7 @@ const normalizeCode = (code: unknown): string => String(code ?? '').trim().toUpp
 
 function cleanName(name: unknown): string {
   const n = typeof name === 'string' ? name.trim().replace(/\s+/g, ' ') : '';
-  if (n.length < 1 || n.length > MAX_NAME) throw new Error(`Name muss 1–${MAX_NAME} Zeichen lang sein`);
+  if (n.length < 1 || n.length > MAX_NAME) throw new GameError('NAME_LENGTH');
   return n;
 }
 
@@ -72,13 +73,13 @@ export class RoomManager {
 
   private room(code: string): Room {
     const room = this.rooms.get(normalizeCode(code));
-    if (!room) throw new Error('Raum nicht gefunden');
+    if (!room) throw new GameError('ROOM_NOT_FOUND');
     return room;
   }
 
   private member(room: Room, playerId: string): Member {
     const m = room.members.find((x) => x.id === playerId);
-    if (!m) throw new Error('Unbekannter Spieler');
+    if (!m) throw new GameError('UNKNOWN_PLAYER');
     return m;
   }
 
@@ -92,13 +93,13 @@ export class RoomManager {
 
   private requirePlayer(room: Room, playerId: string): Member {
     const m = this.member(room, playerId);
-    if (m.spectator) throw new Error('Zuschauer können nicht spielen');
+    if (m.spectator) throw new GameError('SPECTATOR_CANNOT_PLAY');
     return m;
   }
 
   private requireHost(room: Room, playerId: string): void {
     this.requirePlayer(room, playerId);
-    if (room.hostId !== playerId) throw new Error('Nur der Host kann das');
+    if (room.hostId !== playerId) throw new GameError('HOST_ONLY');
   }
 
   private isLeft(room: Room, id: string): boolean {
@@ -128,7 +129,7 @@ export class RoomManager {
   }
 
   create(name: string) {
-    if (this.rooms.size >= this.maxRooms) throw new Error('Server ausgelastet, bitte später erneut versuchen');
+    if (this.rooms.size >= this.maxRooms) throw new GameError('SERVER_FULL');
     const member = this.newMember(cleanName(name));
     const code = this.newCode();
     this.rooms.set(code, {
@@ -147,7 +148,7 @@ export class RoomManager {
     const room = this.room(code);
     const clean = cleanName(name);
     if (room.members.some((m) => m.name.toLowerCase() === clean.toLowerCase())) {
-      throw new Error('Name bereits vergeben');
+      throw new GameError('NAME_TAKEN');
     }
     const spectator = room.game !== null;
     if (spectator) {
@@ -155,11 +156,11 @@ export class RoomManager {
       if (spectators.length >= MAX_SPECTATORS) {
         // Closed tabs must not block newcomers: make room by dropping a disconnected spectator.
         const stale = spectators.find((m) => !m.connected);
-        if (!stale) throw new Error('Zu viele Zuschauer');
+        if (!stale) throw new GameError('TOO_MANY_SPECTATORS');
         room.members = room.members.filter((m) => m !== stale);
       }
     } else if (this.players(room).length >= MAX_PLAYERS) {
-      throw new Error('Raum ist voll');
+      throw new GameError('ROOM_FULL');
     }
     const member: Member = spectator
       ? { ...this.newMember(clean), spectator: true, wantsToPlay: false }
@@ -177,8 +178,8 @@ export class RoomManager {
   rejoin(code: string, token: string) {
     const room = this.room(code);
     const member = room.members.find((m) => !m.bot && m.token === token);
-    if (!member) throw new Error('Sitzung abgelaufen');
-    if (this.isLeft(room, member.id)) throw new Error('Du wurdest aus dem Spiel genommen');
+    if (!member) throw new GameError('SESSION_EXPIRED');
+    if (this.isLeft(room, member.id)) throw new GameError('REMOVED_FROM_GAME');
     this.setConnected(room.code, member.id, true);
     return {
       code: room.code,
@@ -190,7 +191,7 @@ export class RoomManager {
   start(code: string, playerId: string): void {
     const room = this.room(code);
     this.requireHost(room, playerId);
-    if (room.game) throw new Error('Das Spiel läuft bereits');
+    if (room.game) throw new GameError('GAME_RUNNING');
     room.game = newGame(
       this.players(room).map(({ id, name }) => ({ id, name })),
       this.rng,
@@ -204,12 +205,12 @@ export class RoomManager {
     const from = this.requirePlayer(room, playerId);
     const game = room.game;
     const turnPhase = game && ['draw', 'place', 'flipAfterDiscard'].includes(game.phase);
-    if (!game || !turnPhase) throw new Error('Gerade nicht möglich');
+    if (!game || !turnPhase) throw new GameError('NOT_POSSIBLE_NOW');
     const target = game.players[game.current];
-    if (target.id === playerId) throw new Error('Du bist selbst dran');
-    if (room.members.find((m) => m.id === target.id)?.bot) throw new Error('Bots muss man nicht anstupsen');
+    if (target.id === playerId) throw new GameError('SELF_TURN');
+    if (room.members.find((m) => m.id === target.id)?.bot) throw new GameError('NO_NUDGE_BOTS');
     if (room.lastNudgeAt !== undefined && this.now() - room.lastNudgeAt < NUDGE_COOLDOWN_MS) {
-      throw new Error('Bitte kurz warten');
+      throw new GameError('PLEASE_WAIT');
     }
     room.lastNudgeAt = this.now();
     return { targetId: target.id, fromName: from.name };
@@ -218,9 +219,9 @@ export class RoomManager {
   setTarget(code: string, playerId: string, target: unknown): void {
     const room = this.room(code);
     this.requireHost(room, playerId);
-    if (room.game) throw new Error('Das Spiel läuft bereits');
+    if (room.game) throw new GameError('GAME_RUNNING');
     if (typeof target !== 'number' || !ALLOWED_TARGETS.includes(target)) {
-      throw new Error('Ungültige Zielpunktzahl');
+      throw new GameError('INVALID_TARGET');
     }
     room.target = target;
     this.touch(room);
@@ -229,9 +230,9 @@ export class RoomManager {
   addBot(code: string, playerId: string, level: unknown): string {
     const room = this.room(code);
     this.requireHost(room, playerId);
-    if (room.game) throw new Error('Das Spiel läuft bereits');
-    if (!BOT_LEVELS.includes(level as BotLevel)) throw new Error('Ungültige Bot-Stufe');
-    if (this.players(room).length >= MAX_PLAYERS) throw new Error('Raum ist voll');
+    if (room.game) throw new GameError('GAME_RUNNING');
+    if (!BOT_LEVELS.includes(level as BotLevel)) throw new GameError('INVALID_BOT_LEVEL');
+    if (this.players(room).length >= MAX_PLAYERS) throw new GameError('ROOM_FULL');
     const taken = new Set(room.members.map((m) => m.name.toLowerCase()));
     const name = BOT_NAMES.find((n) => !taken.has(n.toLowerCase())) ?? `Bot ${room.members.length + 1}`;
     const bot: Member = {
@@ -249,8 +250,8 @@ export class RoomManager {
   act(code: string, playerId: string, action: unknown): void {
     const room = this.room(code);
     this.requirePlayer(room, playerId);
-    if (!room.game) throw new Error('Das Spiel hat noch nicht begonnen');
-    if (typeof action !== 'object' || action === null) throw new Error('Ungültige Aktion');
+    if (!room.game) throw new GameError('GAME_NOT_STARTED');
+    if (typeof action !== 'object' || action === null) throw new GameError('INVALID_ACTION');
     room.game = apply(room.game, playerId, action as Action, this.rng);
     this.touch(room);
   }
@@ -258,7 +259,7 @@ export class RoomManager {
   next(code: string, playerId: string): void {
     const room = this.room(code);
     this.requireHost(room, playerId);
-    if (!room.game) throw new Error('Das Spiel hat noch nicht begonnen');
+    if (!room.game) throw new GameError('GAME_NOT_STARTED');
     room.game = startRound(room.game, this.rng);
     this.touch(room);
   }
@@ -266,7 +267,7 @@ export class RoomManager {
   rematch(code: string, playerId: string): void {
     const room = this.room(code);
     this.requireHost(room, playerId);
-    if (room.game?.phase !== 'gameOver') throw new Error('Das Spiel läuft noch');
+    if (room.game?.phase !== 'gameOver') throw new GameError('GAME_NOT_OVER');
     const staying = this.players(room).filter((m) => !this.isLeft(room, m.id));
     const promoted = room.members
       .filter((m) => m.spectator && m.wantsToPlay)
@@ -290,7 +291,7 @@ export class RoomManager {
   remove(code: string, playerId: string, targetId: string): void {
     const room = this.room(code);
     this.requireHost(room, playerId);
-    if (targetId === playerId) throw new Error('Du kannst dich nicht selbst entfernen');
+    if (targetId === playerId) throw new GameError('CANNOT_REMOVE_SELF');
     const target = this.member(room, targetId);
     if (target.spectator || !room.game) room.members = room.members.filter((m) => m.id !== targetId);
     else room.game = removePlayer(room.game, targetId);
@@ -328,8 +329,8 @@ export class RoomManager {
   requestPlay(code: string, playerId: string): boolean {
     const room = this.room(code);
     const member = this.member(room, playerId);
-    if (!member.spectator) throw new Error('Du spielst bereits mit');
-    if (!room.game) throw new Error('Gerade nicht möglich');
+    if (!member.spectator) throw new GameError('ALREADY_PLAYING');
+    if (!room.game) throw new GameError('NOT_POSSIBLE_NOW');
     member.wantsToPlay = !member.wantsToPlay;
     this.touch(room);
     return member.wantsToPlay;
@@ -356,13 +357,13 @@ export class RoomManager {
   sendChat(code: string, playerId: string, text: unknown): ChatMessage {
     const room = this.room(code);
     const member = this.member(room, playerId);
-    if (member.bot) throw new Error('Bots können nicht schreiben');
+    if (member.bot) throw new GameError('BOTS_CANNOT_CHAT');
     const clean = typeof text === 'string' ? text.trim().replace(/\s+/g, ' ').slice(0, CHAT_MAX_LEN) : '';
-    if (!clean) throw new Error('Nachricht ist leer');
+    if (!clean) throw new GameError('MESSAGE_EMPTY');
     const now = this.now();
     const times = (room.chatTimes ??= new Map<string, number[]>());
     const recent = (times.get(playerId) ?? []).filter((t) => now - t < CHAT_WINDOW_MS);
-    if (recent.length >= CHAT_BURST) throw new Error('Zu viele Nachrichten');
+    if (recent.length >= CHAT_BURST) throw new GameError('TOO_MANY_MESSAGES');
     times.set(playerId, [...recent, now]);
     const msg: ChatMessage = { id: randomUUID(), from: playerId, name: member.name, text: clean, at: now };
     room.chat = [...(room.chat ?? []), msg].slice(-CHAT_HISTORY);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Action, BotLevel, ChatMessage } from '../shared/types';
 import type { ClientState } from '../shared/view';
+import i18n from './i18n';
 import { loadSession, request, saveSession, socket } from './socket';
 
 export function useGame() {
@@ -39,7 +40,7 @@ export function useGame() {
       const base = document.title;
       let n = 0;
       const id = setInterval(() => {
-        document.title = n % 2 === 0 ? `👉 ${from} stupst dich an` : base;
+        document.title = n % 2 === 0 ? i18n.t('common.nudgeTitle', { name: from }) : base;
         if (++n >= 10) {
           clearInterval(id);
           document.title = base;
@@ -52,7 +53,7 @@ export function useGame() {
       saveSession(null);
       setChat([]);
       setState(null);
-      setError('Du wurdest aus dem Raum entfernt');
+      setError('REMOVED_FROM_ROOM');
     };
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -78,7 +79,7 @@ export function useGame() {
       setError(null);
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unbekannter Fehler');
+      setError(e instanceof Error ? e.message : 'UNKNOWN');
     }
   }, []);
 

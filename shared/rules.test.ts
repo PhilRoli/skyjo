@@ -22,9 +22,9 @@ describe('newGame', () => {
   });
 
   it('requires 2 to 8 players', () => {
-    expect(() => newGame([two[0]], rng)).toThrow('2 bis 8');
+    expect(() => newGame([two[0]], rng)).toThrow('PLAYER_COUNT');
     const nine = Array.from({ length: 9 }, (_, i) => ({ id: `p${i}`, name: `p${i}` }));
-    expect(() => newGame(nine, rng)).toThrow('2 bis 8');
+    expect(() => newGame(nine, rng)).toThrow('PLAYER_COUNT');
   });
 });
 
@@ -33,10 +33,10 @@ describe('initial flip', () => {
     let s = newGame(two, seeded(1));
     s = flip(s, 'A', 0);
     s = flip(s, 'A', 1);
-    expect(() => flip(s, 'A', 2)).toThrow('schon 2 Karten');
-    expect(() => flip(s, 'A', 0)).toThrow('bereits aufgedeckt');
-    expect(() => apply(s, 'Z', { type: 'flipInitial', slot: 0 }, rng)).toThrow('Unbekannter Spieler');
-    expect(() => flip(s, 'B', 12)).toThrow('Ungültiger Platz');
+    expect(() => flip(s, 'A', 2)).toThrow('TWO_REVEALED');
+    expect(() => flip(s, 'A', 0)).toThrow('ALREADY_REVEALED');
+    expect(() => apply(s, 'Z', { type: 'flipInitial', slot: 0 }, rng)).toThrow('UNKNOWN_PLAYER');
+    expect(() => flip(s, 'B', 12)).toThrow('INVALID_SLOT');
   });
 
   it('starts with the highest sum of the two flipped cards', () => {
@@ -82,15 +82,15 @@ describe('turn actions', () => {
     expect(s.drawnFrom).toBe('deck');
     expect(s.phase).toBe('place');
     expect(s.deck).toHaveLength(3);
-    expect(() => act(fresh(), 'B', { type: 'drawFromDeck' })).toThrow('nicht dran');
-    expect(() => act(s, 'A', { type: 'drawFromDeck' })).toThrow('Jetzt nicht möglich');
+    expect(() => act(fresh(), 'B', { type: 'drawFromDeck' })).toThrow('NOT_YOUR_TURN');
+    expect(() => act(s, 'A', { type: 'drawFromDeck' })).toThrow('NOT_POSSIBLE_NOW');
   });
 
   it('a card taken from the discard pile must be swapped', () => {
     const s = act(fresh(), 'A', { type: 'takeDiscard' });
     expect(s.drawn).toBe(9);
     expect(s.discard).toEqual([]);
-    expect(() => act(s, 'A', { type: 'discardDrawn' })).toThrow('tauschen');
+    expect(() => act(s, 'A', { type: 'discardDrawn' })).toThrow('MUST_SWAP_DISCARD');
   });
 
   it('swap puts the old card on the discard pile and passes the turn', () => {
@@ -125,14 +125,14 @@ describe('turn actions', () => {
         type: 'flipHidden',
         slot: 99,
       }),
-    ).toThrow('Ungültiger Platz');
+    ).toThrow('INVALID_SLOT');
   });
 
   it('refuses to flip a card that is already face up', () => {
     let s = mkState([cells(FILL, [3]), cells(FILL)]);
     s = act(s, 'A', { type: 'drawFromDeck' });
     s = act(s, 'A', { type: 'discardDrawn' });
-    expect(() => act(s, 'A', { type: 'flipHidden', slot: 0 })).toThrow('verdeckte');
+    expect(() => act(s, 'A', { type: 'flipHidden', slot: 0 })).toThrow('PICK_HIDDEN');
   });
 
   it('reshuffles the discard pile (except the top card) when the deck is empty', () => {
@@ -258,7 +258,7 @@ describe('round end and scoring', () => {
     expect(s.players.map((p) => p.total)).toEqual([1, 24]);
     expect(s.players.every((p) => p.grid.length === 12 && p.grid.every((c) => c && !c.up))).toBe(true);
     expect(s.finisher).toBeNull();
-    expect(() => startRound(mkState([cells(FILL), cells(FILL)]), rng)).toThrow('Runde läuft noch');
+    expect(() => startRound(mkState([cells(FILL), cells(FILL)]), rng)).toThrow('ROUND_RUNNING');
   });
 });
 

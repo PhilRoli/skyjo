@@ -3,6 +3,7 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { useTranslation } from 'react-i18next';
 
 const NAME_KEY = 'skyjo:name';
 
@@ -29,6 +30,7 @@ interface Props {
 }
 
 export function Home({ initialCode, onCreate, onJoin }: Props) {
+  const { t } = useTranslation();
   const [name, setName] = useState(loadName);
   const [code, setCode] = useState(initialCode);
   const nameOk = name.trim().length > 0;
@@ -38,7 +40,7 @@ export function Home({ initialCode, onCreate, onJoin }: Props) {
         Skyjo
       </Typography>
       <TextField
-        label="Name"
+        label={t('home.name')}
         value={name}
         onChange={(e) => setName(e.target.value)}
         slotProps={{ htmlInput: { maxLength: 16 } }}
@@ -47,14 +49,14 @@ export function Home({ initialCode, onCreate, onJoin }: Props) {
           saveName(name);
           onCreate(name);
         }}>
-        Raum erstellen
+        {t('home.create')}
       </Button>
       <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
-        Beitreten
+        {t('home.join')}
       </Typography>
       <Stack direction="row" spacing={1}>
         <TextField
-          label="Raumcode"
+          label={t('home.code')}
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           slotProps={{ htmlInput: { maxLength: 4 } }}
@@ -64,7 +66,7 @@ export function Home({ initialCode, onCreate, onJoin }: Props) {
             saveName(name);
             onJoin(code, name);
           }}>
-          Beitreten
+          {t('home.join')}
         </Button>
       </Stack>
     </Stack>

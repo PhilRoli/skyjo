@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -13,79 +14,52 @@ import MotionPhotosOffIcon from '@mui/icons-material/MotionPhotosOff';
 import { useAnimations } from '../animations';
 import { CardView } from './CardView';
 
-const SECTIONS: { title: string; items: string[] }[] = [
-  {
-    title: 'Ziel',
-    items: ['Am Ende möglichst wenig Punkte sammeln. Das Spiel endet, sobald jemand über dem Zielwert liegt (Standard 100, der Host kann 50 oder 150 wählen). Wer dann die wenigsten hat, gewinnt.'],
-  },
-  {
-    title: 'Dein Zug',
-    items: [
-      'Entweder die oberste Ablagekarte nehmen und gegen eine deiner Karten tauschen (auch gegen eine verdeckte).',
-      'Oder eine Karte vom Nachziehstapel ziehen: gegen eine deiner Karten tauschen, oder ablegen und danach eine verdeckte Karte aufdecken.',
-      'Die ausgetauschte Karte kommt offen auf die Ablage.',
-    ],
-  },
-  {
-    title: 'Dreier-Spalte',
-    items: ['Drei gleiche offene Karten in einer Spalte werden entfernt und kommen auf die Ablage.'],
-  },
-  {
-    title: 'Rundenende',
-    items: [
-      'Hat jemand alle Karten aufgedeckt, ist jeder andere noch einmal dran. Dann werden alle Karten aufgedeckt und gezählt.',
-      'Wer die Runde beendet hat, muss die strikt niedrigste Punktzahl haben. Sonst werden seine Punkte verdoppelt (nur wenn sie positiv sind).',
-    ],
-  },
-  {
-    title: 'Rundenstart',
-    items: ['Jeder deckt zu Beginn 2 Karten auf. Die höchste Summe beginnt.'],
-  },
-];
+const SECTION_IDS = ['goal', 'turn', 'triple', 'end', 'start'] as const;
 
 const SAMPLES: { value: number; label: string }[] = [
-  { value: 12, label: '10 bis 12' },
-  { value: 7, label: '5 bis 9' },
-  { value: 3, label: '1 bis 4' },
+  { value: 12, label: '10–12' },
+  { value: 7, label: '5–9' },
+  { value: 3, label: '1–4' },
   { value: 0, label: '0' },
-  { value: -1, label: '−1 und −2' },
+  { value: -1, label: '−1, −2' },
 ];
 
 export function RulesButton() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Tooltip title="Regeln">
-        <IconButton aria-label="Regeln" onClick={() => setOpen(true)}>
+      <Tooltip title={t('rules.title')}>
+        <IconButton aria-label={t('rules.title')} onClick={() => setOpen(true)}>
           <HelpOutlineIcon />
         </IconButton>
       </Tooltip>
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm" scroll="paper">
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: 800 }}>
-          Regeln
-          <Tooltip title="Schließen">
-            <IconButton aria-label="Schließen" onClick={() => setOpen(false)}>
+          {t('rules.title')}
+          <Tooltip title={t('common.close')}>
+            <IconButton aria-label={t('common.close')} onClick={() => setOpen(false)}>
               <CloseIcon />
             </IconButton>
           </Tooltip>
         </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2}>
-            {SECTIONS.map((s) => (
-              <Stack key={s.title} spacing={0.5}>
+            {SECTION_IDS.map((id) => (
+              <Stack key={id} spacing={0.5}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                  {s.title}
+                  {t(`rules.${id}.title`)}
                 </Typography>
-                {s.items.map((t) => (
-                  <Typography key={t} variant="body2">
-                    {t}
+                {(t(`rules.${id}.items`, { returnObjects: true }) as unknown as string[]).map((item) => (
+                  <Typography key={item} variant="body2">
+                    {item}
                   </Typography>
                 ))}
               </Stack>
             ))}
             <Stack spacing={1}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                Kartenfarben
+                {t('rules.colors')}
               </Typography>
               <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
                 {SAMPLES.map((s) => (
@@ -104,10 +78,12 @@ export function RulesButton() {
 }
 
 export function AnimationsToggle() {
+  const { t } = useTranslation();
   const { enabled, toggle } = useAnimations();
+  const label = t(enabled ? 'rules.animationsOff' : 'rules.animationsOn');
   return (
-    <Tooltip title={enabled ? 'Animationen ausschalten' : 'Animationen einschalten'}>
-      <IconButton aria-label={enabled ? 'Animationen ausschalten' : 'Animationen einschalten'} onClick={toggle}>
+    <Tooltip title={label}>
+      <IconButton aria-label={label} onClick={toggle}>
         {enabled ? <AnimationIcon /> : <MotionPhotosOffIcon />}
       </IconButton>
     </Tooltip>

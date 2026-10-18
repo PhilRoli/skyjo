@@ -1,28 +1,32 @@
 import type { GameEvent } from './types';
 
-function verb(e: GameEvent): string {
+/** Minimal translate function (matches i18next's `t`), so shared code stays free of UI libraries. */
+export type Translate = (key: string, options?: Record<string, unknown>) => string;
+
+function verb(e: GameEvent, t: Translate): string {
   switch (e.kind) {
     case 'draw':
-      return 'zieht eine Karte';
+      return t('events.draw');
     case 'takeDiscard':
-      return `nimmt ${e.value} von der Ablage`;
+      return t('events.takeDiscard', { value: e.value });
     case 'swap':
-      return `ersetzt ${e.replaced} durch ${e.value}`;
+      return t('events.swap', { replaced: e.replaced, value: e.value });
     case 'discard':
-      return `legt ${e.value} ab`;
+      return t('events.discard', { value: e.value });
     case 'flip':
-      return `deckt ${e.value} auf`;
+      return t('events.flip', { value: e.value });
     case 'clear':
-      return `entfernt Spalte (${e.value})`;
+      return t('events.clear', { value: e.value });
   }
 }
 
 /** One readable line; the player's name is only repeated when the actor changes. */
-export function describeEvents(events: GameEvent[], nameOf: (id: string) => string): string {
+export function describeEvents(events: GameEvent[], nameOf: (id: string) => string, t: Translate): string {
   let last: string | null = null;
   return events
     .map((e) => {
-      const text = e.by === last ? verb(e) : `${nameOf(e.by)} ${verb(e)}`;
+      const action = verb(e, t);
+      const text = e.by === last ? action : t('events.named', { name: nameOf(e.by), action });
       last = e.by;
       return text;
     })
