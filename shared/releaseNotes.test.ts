@@ -23,10 +23,10 @@ describe('release notes', () => {
   });
 
   it('has the spectator and bot release as 1.3.0 below 1.3.1 and everything before it as 1.2.0', () => {
-    expect(RELEASE_NOTES.map((r) => r.version).slice(0, 12)).toEqual(['1.6.5', '1.6.4', '1.6.3', '1.6.2', '1.6.1', '1.6.0', '1.5.1', '1.5.0', '1.4.0', '1.3.1', '1.3.0', '1.2.0']);
-    expect(RELEASE_NOTES[10].items.de.join(' ')).toMatch(/Zuschauer/);
-    expect(RELEASE_NOTES[10].items.de.join(' ')).toMatch(/Bot/);
-    expect(RELEASE_NOTES[10].items.en.join(' ')).toMatch(/spectator/i);
-    expect(RELEASE_NOTES[10].items.en.join(' ')).toMatch(/bot/i);
+    expect(RELEASE_NOTES.map((r) => r.version).slice(0, 13)).toEqual(['1.7.0', '1.6.5', '1.6.4', '1.6.3', '1.6.2', '1.6.1', '1.6.0', '1.5.1', '1.5.0', '1.4.0', '1.3.1', '1.3.0', '1.2.0']);
+    expect(RELEASE_NOTES[11].items.de.join(' ')).toMatch(/Zuschauer/);
+    expect(RELEASE_NOTES[11].items.de.join(' ')).toMatch(/Bot/);
+    expect(RELEASE_NOTES[11].items.en.join(' ')).toMatch(/spectator/i);
+    expect(RELEASE_NOTES[11].items.en.join(' ')).toMatch(/bot/i);
   });
 });

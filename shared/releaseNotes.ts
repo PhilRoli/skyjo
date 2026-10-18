@@ -9,6 +9,22 @@ export interface ReleaseNote {
 /** Newest first. Shown in the app when clicking the version. Every entry needs German and English. */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.7.0',
+    title: { de: 'Jetzt auch auf Englisch', en: 'Now in English too' },
+    items: {
+      de: [
+        'Skyjo gibt es jetzt auf Deutsch und Englisch. Jede Person wählt die Sprache für sich, unten links im Bildschirm.',
+        'Die Sprache wird beim ersten Besuch aus dem Browser erkannt (Deutsch bei deutschem Browser, sonst Englisch) und gemerkt.',
+        'Alles ist übersetzt: Spiel, Regeln, Fehlermeldungen und diese Neuigkeiten.',
+      ],
+      en: [
+        'Skyjo is now available in German and English. Everyone picks their own language at the bottom left of the screen.',
+        'The language is detected from your browser on the first visit (German for German browsers, English otherwise) and remembered.',
+        'Everything is translated: the game, rules, error messages and these release notes.',
+      ],
+    },
+  },
+  {
     version: '1.6.5',
     title: { de: 'Chat-Fix', en: 'Chat fix' },
     items: {
