@@ -172,5 +172,9 @@
         "Everyone flips 2 cards at the start. The highest sum goes first."
       ]
     }
+  },
+  "releaseNotes": {
+    "title": "Release notes",
+    "heading": "What's new"
   }
 }
