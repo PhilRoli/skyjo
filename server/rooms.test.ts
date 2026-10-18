@@ -541,6 +541,16 @@ describe('bots', () => {
     expect(m.sweep()).toBe(1);
   });
 
+  it('accepts the extreme level and keeps it through a snapshot restore (server restart)', () => {
+    const { m, code, host } = lobby(['Anna']);
+    const id = m.addBot(code, host.playerId, 'extreme');
+    m.start(code, host.playerId);
+    const m2 = mk();
+    m2.restore(JSON.parse(JSON.stringify(m.snapshot())));
+    expect(m2.stateFor(code, host.playerId).room.members.find((x) => x.id === id)?.bot).toEqual({ level: 'extreme' });
+    expect(m2.botViews(code)).toMatchObject([{ id, level: 'extreme' }]);
+  });
+
   it('restore keeps bots connected and marks humans disconnected', () => {
     const { m, code, host } = lobby(['Anna']);
     m.addBot(code, host.playerId, 'easy');

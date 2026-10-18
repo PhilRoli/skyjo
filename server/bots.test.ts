@@ -50,7 +50,7 @@ async function playOut(m: RoomManager, code: string, humanId: string) {
 
 describe('BotRunner', () => {
   it('plays the bots through a whole game next to a human and waits for the host between rounds', async () => {
-    const { m, h, code, botIds, runner } = setup(['easy', 'normal', 'hard']);
+    const { m, h, code, botIds, runner } = setup(['easy', 'normal', 'hard', 'extreme']);
     const acted = new Set<string>();
     const act = m.act.bind(m);
     m.act = (c: string, id: string, a: unknown) => {
@@ -68,7 +68,7 @@ describe('BotRunner', () => {
   it('resumes pending bot moves after a restore', async () => {
     const m1 = new RoomManager(seeded(3));
     const h = m1.create('Anna');
-    const botId = m1.addBot(h.code, h.playerId, 'normal');
+    const botId = m1.addBot(h.code, h.playerId, 'extreme');
     m1.start(h.code, h.playerId); // no runner: the bot has not moved yet
     const m2 = new RoomManager(seeded(3));
     const runner = new BotRunner(m2, { delayMs: 0, rng: seeded(9) });
