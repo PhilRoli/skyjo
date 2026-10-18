@@ -37,9 +37,9 @@ const fields = (s: GameState) => ({
 
 // View of every seat at one step. Everything except `me`, `drawn`, `drawnFrom` is identical for all
 // seats (masking does not depend on the viewer), so it is stored once (checked here) plus per-seat
-// [drawn, drawnFrom]. Grids use 'U'+hex(value+2) face up, 'D_' face down, 'xx' removed.
+// [drawn, drawnFrom]. Grids use 'U'+hex(value+2) face up, 'D' + (c.value === null ? '_' : (c.value + 2).toString(16)) face down, 'xx' removed.
 const encPub = (c: { up: boolean; value: number | null } | null) =>
-  c ? (c.up ? 'U' + (c.value! + 2).toString(16) : 'D_') : 'xx';
+  c ? (c.up ? 'U' + (c.value! + 2).toString(16) : 'D' + (c.value === null ? '_' : (c.value + 2).toString(16))) : 'xx';
 const viewRec = (state: GameState, ids: string[]) => {
   const shared = (id: string) => {
     const { me: _me, drawn: _d, drawnFrom: _f, players, ...rest } = viewFor(state, id);
