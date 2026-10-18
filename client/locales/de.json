@@ -133,5 +133,44 @@
     "discard": "legt {{value}} ab",
     "flip": "deckt {{value}} auf",
     "clear": "entfernt Spalte ({{value}})"
+  },
+  "rules": {
+    "title": "Regeln",
+    "colors": "Kartenfarben",
+    "animationsOff": "Animationen ausschalten",
+    "animationsOn": "Animationen einschalten",
+    "goal": {
+      "title": "Ziel",
+      "items": [
+        "Am Ende möglichst wenig Punkte sammeln. Das Spiel endet, sobald jemand über dem Zielwert liegt (Standard 100, der Host kann 50 oder 150 wählen). Wer dann die wenigsten hat, gewinnt."
+      ]
+    },
+    "turn": {
+      "title": "Dein Zug",
+      "items": [
+        "Entweder die oberste Ablagekarte nehmen und gegen eine deiner Karten tauschen (auch gegen eine verdeckte).",
+        "Oder eine Karte vom Nachziehstapel ziehen: gegen eine deiner Karten tauschen, oder ablegen und danach eine verdeckte Karte aufdecken.",
+        "Die ausgetauschte Karte kommt offen auf die Ablage."
+      ]
+    },
+    "triple": {
+      "title": "Dreier-Spalte",
+      "items": [
+        "Drei gleiche offene Karten in einer Spalte werden entfernt und kommen auf die Ablage."
+      ]
+    },
+    "end": {
+      "title": "Rundenende",
+      "items": [
+        "Hat jemand alle Karten aufgedeckt, ist jeder andere noch einmal dran. Dann werden alle Karten aufgedeckt und gezählt.",
+        "Wer die Runde beendet hat, muss die strikt niedrigste Punktzahl haben. Sonst werden seine Punkte verdoppelt (nur wenn sie positiv sind)."
+      ]
+    },
+    "start": {
+      "title": "Rundenstart",
+      "items": [
+        "Jeder deckt zu Beginn 2 Karten auf. Die höchste Summe beginnt."
+      ]
+    }
   }
 }

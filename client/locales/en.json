@@ -133,5 +133,44 @@
     "discard": "discards {{value}}",
     "flip": "reveals {{value}}",
     "clear": "removes a column ({{value}})"
+  },
+  "rules": {
+    "title": "Rules",
+    "colors": "Card colors",
+    "animationsOff": "Turn animations off",
+    "animationsOn": "Turn animations on",
+    "goal": {
+      "title": "Goal",
+      "items": [
+        "Collect as few points as possible. The game ends as soon as someone goes above the target score (100 by default, the host can choose 50 or 150). Whoever has the fewest points then wins."
+      ]
+    },
+    "turn": {
+      "title": "Your turn",
+      "items": [
+        "Either take the top card of the discard pile and swap it with one of your cards (including a face-down one).",
+        "Or draw a card from the draw pile: swap it with one of your cards, or discard it and then flip a face-down card.",
+        "The swapped-out card goes face up onto the discard pile."
+      ]
+    },
+    "triple": {
+      "title": "Column of three",
+      "items": [
+        "Three identical face-up cards in a column are removed and go onto the discard pile."
+      ]
+    },
+    "end": {
+      "title": "End of the round",
+      "items": [
+        "Once someone has revealed all their cards, everyone else gets one more turn. Then all cards are revealed and counted.",
+        "Whoever ended the round must have the strictly lowest score. Otherwise their points are doubled (only if they are positive)."
+      ]
+    },
+    "start": {
+      "title": "Start of a round",
+      "items": [
+        "Everyone flips 2 cards at the start. The highest sum goes first."
+      ]
+    }
   }
 }
