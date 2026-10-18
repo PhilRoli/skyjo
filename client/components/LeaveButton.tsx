@@ -7,6 +7,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import LogoutIcon from '@mui/icons-material/Logout';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   spectator: boolean;
@@ -14,23 +15,24 @@ interface Props {
 }
 
 export function LeaveButton({ spectator, onLeave }: Props) {
+  const { t } = useTranslation();
   const [confirm, setConfirm] = useState(false);
   return (
     <>
-      <Tooltip title="Verlassen">
-        <IconButton aria-label="Verlassen" onClick={spectator ? onLeave : () => setConfirm(true)}>
+      <Tooltip title={t('common.leave')}>
+        <IconButton aria-label={t('common.leave')} onClick={spectator ? onLeave : () => setConfirm(true)}>
           <LogoutIcon sx={{ transform: 'scaleX(-1)' }} />
         </IconButton>
       </Tooltip>
       <Dialog open={confirm} onClose={() => setConfirm(false)}>
-        <DialogTitle sx={{ fontWeight: 700 }}>Raum verlassen?</DialogTitle>
-        <DialogContent>Du scheidest aus dem laufenden Spiel aus.</DialogContent>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('leave.title')}</DialogTitle>
+        <DialogContent>{t('leave.body')}</DialogContent>
         <DialogActions>
           <Button color="inherit" onClick={() => setConfirm(false)}>
-            Abbrechen
+            {t('common.cancel')}
           </Button>
           <Button color="warning" onClick={onLeave}>
-            Verlassen
+            {t('common.leave')}
           </Button>
         </DialogActions>
       </Dialog>

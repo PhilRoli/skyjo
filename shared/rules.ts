@@ -1,3 +1,4 @@
+import { GameError } from './errors';
 import { buildDeck, shuffle } from './deck';
 import {
   COLUMNS,
@@ -26,7 +27,7 @@ export function newGame(
   target: number = DEFAULT_TARGET,
 ): GameState {
   if (members.length < MIN_PLAYERS || members.length > MAX_PLAYERS) {
-    throw new Error('2 bis 8 Spieler erforderlich');
+    throw new GameError('PLAYER_COUNT');
   }
   const state: GameState = {
     phase: 'initialFlip',
@@ -49,8 +50,8 @@ export function newGame(
 }
 
 export function startRound(prev: GameState, rng: Rng): GameState {
-  if (prev.phase === 'gameOver') throw new Error('Das Spiel ist beendet, starte eine Revanche');
-  if (prev.round > 0 && prev.phase !== 'roundOver') throw new Error('Runde läuft noch');
+  if (prev.phase === 'gameOver') throw new GameError('GAME_OVER_REMATCH');
+  if (prev.round > 0 && prev.phase !== 'roundOver') throw new GameError('ROUND_RUNNING');
   const state = structuredClone(prev);
   const deck = shuffle(buildDeck(), rng);
   for (const p of state.players) {
@@ -73,16 +74,16 @@ export function startRound(prev: GameState, rng: Rng): GameState {
 
 function checkSlot(slot: unknown): asserts slot is number {
   if (!Number.isInteger(slot) || (slot as number) < 0 || (slot as number) >= GRID_SIZE) {
-    throw new Error('Ungültiger Platz');
+    throw new GameError('INVALID_SLOT');
   }
 }
 
 function flipInitial(state: GameState, player: PlayerState, slot: unknown): GameState {
-  if (state.phase !== 'initialFlip') throw new Error('Jetzt nicht möglich');
+  if (state.phase !== 'initialFlip') throw new GameError('NOT_POSSIBLE_NOW');
   checkSlot(slot);
   const cell = player.grid[slot];
-  if (!cell || cell.up) throw new Error('Karte ist bereits aufgedeckt');
-  if (upCount(player) >= 2) throw new Error('Du hast schon 2 Karten aufgedeckt');
+  if (!cell || cell.up) throw new GameError('ALREADY_REVEALED');
+  if (upCount(player) >= 2) throw new GameError('TWO_REVEALED');
   cell.up = true;
   if (upCount(player) === 2) state.initialDone.push(player.id);
   return maybeFinishInitial(state);
@@ -101,8 +102,8 @@ export function maybeFinishInitial(state: GameState): GameState {
 }
 
 function requireTurn(state: GameState, idx: number, phase: GameState['phase']): void {
-  if (state.phase !== phase) throw new Error('Jetzt nicht möglich');
-  if (state.current !== idx) throw new Error('Du bist nicht dran');
+  if (state.phase !== phase) throw new GameError('NOT_POSSIBLE_NOW');
+  if (state.current !== idx) throw new GameError('NOT_YOUR_TURN');
 }
 
 function drawCard(state: GameState, rng: Rng): number {
@@ -112,7 +113,7 @@ function drawCard(state: GameState, rng: Rng): number {
     state.discard = top === undefined ? [] : [top];
   }
   const card = state.deck.pop();
-  if (card === undefined) throw new Error('Keine Karten mehr');
+  if (card === undefined) throw new GameError('DECK_EMPTY');
   return card;
 }
 
@@ -195,7 +196,7 @@ export function apply(prev: GameState, playerId: string, action: Action, rng: Rn
 
 function applyAction(state: GameState, playerId: string, action: Action, rng: Rng): GameState {
   const idx = state.players.findIndex((p) => p.id === playerId && !p.left);
-  if (idx < 0) throw new Error('Unbekannter Spieler');
+  if (idx < 0) throw new GameError('UNKNOWN_PLAYER');
   const player = state.players[idx];
   switch (action.type) {
     case 'flipInitial':
@@ -211,7 +212,7 @@ function applyAction(state: GameState, playerId: string, action: Action, rng: Rn
     case 'takeDiscard': {
       requireTurn(state, idx, 'draw');
       const card = state.discard.pop();
-      if (card === undefined) throw new Error('Ablagestapel ist leer');
+      if (card === undefined) throw new GameError('DISCARD_EMPTY');
       state.events = [{ kind: 'takeDiscard', by: playerId, value: card }];
       state.drawn = card;
       state.drawnFrom = 'discard';
@@ -222,7 +223,7 @@ function applyAction(state: GameState, playerId: string, action: Action, rng: Rn
       requireTurn(state, idx, 'place');
       checkSlot(action.slot);
       const cell = player.grid[action.slot];
-      if (!cell) throw new Error('Dieser Platz ist leer');
+      if (!cell) throw new GameError('SLOT_EMPTY');
       state.events.push({ kind: 'swap', by: playerId, value: state.drawn!, replaced: cell.value });
       state.discard.push(cell.value);
       player.grid[action.slot] = { value: state.drawn!, up: true };
@@ -232,7 +233,7 @@ function applyAction(state: GameState, playerId: string, action: Action, rng: Rn
     }
     case 'discardDrawn': {
       requireTurn(state, idx, 'place');
-      if (state.drawnFrom !== 'deck') throw new Error('Die Karte von der Ablage musst du tauschen');
+      if (state.drawnFrom !== 'deck') throw new GameError('MUST_SWAP_DISCARD');
       state.events.push({ kind: 'discard', by: playerId, value: state.drawn! });
       state.discard.push(state.drawn!);
       state.drawn = null;
@@ -245,13 +246,13 @@ function applyAction(state: GameState, playerId: string, action: Action, rng: Rn
       requireTurn(state, idx, 'flipAfterDiscard');
       checkSlot(action.slot);
       const cell = player.grid[action.slot];
-      if (!cell || cell.up) throw new Error('Wähle eine verdeckte Karte');
+      if (!cell || cell.up) throw new GameError('PICK_HIDDEN');
       state.events.push({ kind: 'flip', by: playerId, value: cell.value });
       cell.up = true;
       return endTurn(state);
     }
     default:
-      throw new Error('Unbekannte Aktion');
+      throw new GameError('UNKNOWN_ACTION');
   }
 }
 

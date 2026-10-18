@@ -8,8 +8,12 @@ describe('release notes', () => {
     expect(RELEASE_NOTES.length).toBeGreaterThan(0);
     for (const r of RELEASE_NOTES) {
       expect(r.version).toMatch(/^\d+\.\d+\.\d+$/);
-      expect(r.title.length).toBeGreaterThan(0);
-      expect(r.items.length).toBeGreaterThan(0);
+      for (const lang of ['de', 'en'] as const) {
+        expect(r.title[lang].length).toBeGreaterThan(0);
+        expect(r.items[lang].every((i) => i.length > 0)).toBe(true);
+      }
+      expect(r.items.de.length).toBeGreaterThan(0);
+      expect(r.items.en.length).toBe(r.items.de.length);
     }
     for (let i = 1; i < RELEASE_NOTES.length; i++) {
       const [a, b] = [parts(RELEASE_NOTES[i - 1].version), parts(RELEASE_NOTES[i].version)];
@@ -19,8 +23,10 @@ describe('release notes', () => {
   });
 
   it('has the spectator and bot release as 1.3.0 below 1.3.1 and everything before it as 1.2.0', () => {
-    expect(RELEASE_NOTES.map((r) => r.version).slice(0, 12)).toEqual(['1.6.5', '1.6.4', '1.6.3', '1.6.2', '1.6.1', '1.6.0', '1.5.1', '1.5.0', '1.4.0', '1.3.1', '1.3.0', '1.2.0']);
-    expect(RELEASE_NOTES[10].items.join(' ')).toMatch(/Zuschauer/);
-    expect(RELEASE_NOTES[10].items.join(' ')).toMatch(/Bot/);
+    expect(RELEASE_NOTES.map((r) => r.version).slice(0, 13)).toEqual(['1.7.0', '1.6.5', '1.6.4', '1.6.3', '1.6.2', '1.6.1', '1.6.0', '1.5.1', '1.5.0', '1.4.0', '1.3.1', '1.3.0', '1.2.0']);
+    expect(RELEASE_NOTES[11].items.de.join(' ')).toMatch(/Zuschauer/);
+    expect(RELEASE_NOTES[11].items.de.join(' ')).toMatch(/Bot/);
+    expect(RELEASE_NOTES[11].items.en.join(' ')).toMatch(/spectator/i);
+    expect(RELEASE_NOTES[11].items.en.join(' ')).toMatch(/bot/i);
   });
 });

@@ -1,0 +1,183 @@
+{
+  "error": {
+    "UNKNOWN": "Unknown error",
+    "ALREADY_PLAYING": "You're already playing",
+    "ALREADY_REVEALED": "Card is already face up",
+    "BOTS_CANNOT_CHAT": "Bots can't chat",
+    "CANNOT_REMOVE_SELF": "You can't remove yourself",
+    "DECK_EMPTY": "No cards left",
+    "DEV_MODE_OFF": "Dev mode is not enabled",
+    "DISCARD_EMPTY": "Discard pile is empty",
+    "GAME_NOT_OVER": "The game is still running",
+    "GAME_NOT_STARTED": "The game hasn't started yet",
+    "GAME_OVER_REMATCH": "The game is over, start a rematch",
+    "GAME_RUNNING": "The game is already running",
+    "HOST_ONLY": "Only the host can do that",
+    "INVALID_ACTION": "Invalid action",
+    "INVALID_BOT_LEVEL": "Invalid bot level",
+    "INVALID_SLOT": "Invalid slot",
+    "INVALID_TARGET": "Invalid target score",
+    "MESSAGE_EMPTY": "Message is empty",
+    "MUST_SWAP_DISCARD": "You must swap the card from the discard pile",
+    "NAME_LENGTH": "Name must be 1–16 characters long",
+    "NAME_TAKEN": "Name is already taken",
+    "NOT_IN_ROOM": "Not in a room",
+    "NOT_POSSIBLE_NOW": "Not possible right now",
+    "NOT_YOUR_TURN": "It's not your turn",
+    "NO_NUDGE_BOTS": "You don't need to nudge bots",
+    "PICK_HIDDEN": "Pick a face-down card",
+    "PLAYER_COUNT": "2 to 8 players required",
+    "PLEASE_WAIT": "Please wait a moment",
+    "REMOVED_FROM_GAME": "You were removed from the game",
+    "ROOM_FULL": "Room is full",
+    "ROOM_NOT_FOUND": "Room not found",
+    "ROUND_RUNNING": "The round is still running",
+    "SELF_TURN": "It's your turn",
+    "SERVER_FULL": "Server is busy, please try again later",
+    "SESSION_EXPIRED": "Session expired",
+    "SLOT_EMPTY": "That slot is empty",
+    "SPECTATOR_CANNOT_PLAY": "Spectators cannot play",
+    "TOO_MANY_MESSAGES": "Too many messages",
+    "TOO_MANY_ROOMS": "Too many rooms created",
+    "TOO_MANY_SPECTATORS": "Too many spectators",
+    "TWO_REVEALED": "You've already flipped 2 cards",
+    "UNKNOWN_ACTION": "Unknown action",
+    "UNKNOWN_PLAYER": "Unknown player",
+    "REMOVED_FROM_ROOM": "You were removed from the room"
+  },
+  "common": {
+    "switch": "Language",
+    "close": "Close",
+    "cancel": "Cancel",
+    "leave": "Leave",
+    "waitHost": "Waiting for the host",
+    "host": "Host",
+    "nudged": "{{name}} nudged you",
+    "disconnected": "Disconnected",
+    "nudgeTitle": "👉 {{name}} nudged you",
+    "switchDe": "Deutsch",
+    "switchEn": "English"
+  },
+  "home": {
+    "name": "Name",
+    "create": "Create room",
+    "join": "Join",
+    "code": "Room code"
+  },
+  "lobby": {
+    "room": "Room {{code}}",
+    "copyLink": "Copy link",
+    "remove": "Remove",
+    "addBot": "Add bot",
+    "target": "Target",
+    "start": "Start game"
+  },
+  "botLevel": {
+    "easy": "Easy",
+    "normal": "Normal",
+    "hard": "Hard"
+  },
+  "table": {
+    "flipTwo": "Flip 2 cards ({{count}}/2)",
+    "waitOthers": "Waiting for the others",
+    "yourTurn": "Your turn",
+    "turnOf": "{{name}}'s turn",
+    "swapOrDiscard": "Swap or discard",
+    "swapCard": "Swap the card",
+    "flipOne": "Flip a card",
+    "lastRound": "{{name}}: last round",
+    "watching": "You're watching",
+    "closeTitle": "End the round?",
+    "closeBody": "You are flipping your last card. Everyone else then gets one final turn.",
+    "closeConfirm": "End round",
+    "gameOver": "Game over",
+    "roundOver": "Round {{round}} over",
+    "target": "Target {{target}}",
+    "signedUp": "{{count}} signed up",
+    "nudge": "Nudge",
+    "current": "Current",
+    "total": "Total",
+    "out": "Out",
+    "skip": "Skip",
+    "discardPile": "Discard pile",
+    "discard": "Discard",
+    "drawn": "Drawn",
+    "devPile": "Dev · Deck ({{count}}) · Top: {{next}}",
+    "devDrawn": " · Drawn: {{value}}",
+    "withdraw": "Withdraw sign-up",
+    "signUp": "Sign up for rematch",
+    "pageTitle": "● Your turn – Skyjo"
+  },
+  "score": {
+    "player": "Player",
+    "round": "Round",
+    "wantsToPlay_one": "{{count}} spectator wants to play",
+    "wantsToPlay_other": "{{count}} spectators want to play",
+    "rematch": "Rematch",
+    "next": "Next round",
+    "withdraw": "Withdraw request",
+    "playAlong": "Join in"
+  },
+  "chat": {
+    "title": "Chat",
+    "you": "You",
+    "placeholder": "Message",
+    "send": "Send"
+  },
+  "leave": {
+    "title": "Leave the room?",
+    "body": "You'll leave the current game."
+  },
+  "events": {
+    "named": "{{name}} {{action}}",
+    "draw": "draws a card",
+    "takeDiscard": "takes {{value}} from the discard pile",
+    "swap": "replaces {{replaced}} with {{value}}",
+    "discard": "discards {{value}}",
+    "flip": "flips {{value}}",
+    "clear": "removes a column ({{value}})"
+  },
+  "rules": {
+    "title": "Rules",
+    "colors": "Card colors",
+    "animationsOff": "Turn animations off",
+    "animationsOn": "Turn animations on",
+    "goal": {
+      "title": "Goal",
+      "items": [
+        "Collect as few points as possible. The game ends as soon as someone goes above the target score (100 by default, the host can choose 50 or 150). Whoever has the fewest points then wins."
+      ]
+    },
+    "turn": {
+      "title": "Your turn",
+      "items": [
+        "Either take the top card of the discard pile and swap it with one of your cards (including a face-down one).",
+        "Or draw a card from the draw pile: swap it with one of your cards, or discard it and then flip a face-down card.",
+        "The swapped-out card goes face up onto the discard pile."
+      ]
+    },
+    "triple": {
+      "title": "Column of three",
+      "items": [
+        "Three identical face-up cards in a column are removed and go onto the discard pile."
+      ]
+    },
+    "end": {
+      "title": "End of the round",
+      "items": [
+        "Once someone has flipped all their cards, everyone else gets one more turn. Then all cards are flipped and counted.",
+        "Whoever ended the round must have the strictly lowest score. Otherwise their points are doubled (only if they are positive)."
+      ]
+    },
+    "start": {
+      "title": "Start of a round",
+      "items": [
+        "Everyone flips 2 cards at the start. The highest sum goes first."
+      ]
+    }
+  },
+  "releaseNotes": {
+    "title": "Release notes",
+    "heading": "What's new"
+  }
+}

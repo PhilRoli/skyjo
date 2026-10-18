@@ -110,7 +110,7 @@ describe('socket server', () => {
 
   it('only the host can start; both players then get their own view without hidden values', async () => {
     const { a, b } = await twoPlayers();
-    expect((await b.request('game:start')).error).toBe('Nur der Host kann das');
+    expect((await b.request('game:start')).error).toBe('HOST_ONLY');
     expect((await a.request('game:start')).ok).toBe(true);
     for (const c of [a, b]) {
       const s = await c.until((x) => x.game?.phase === 'initialFlip');
@@ -127,9 +127,25 @@ describe('socket server', () => {
     const joinedLate = await late.request('room:join', { code: created.code, name: 'Cara' });
     expect(joinedLate.role).toBe('spectator');
     expect((await a.request('game:action', { type: 'drawFromDeck' })).ok).toBe(false);
-    expect((await a.request('game:action', {})).error).toBe('Unbekannte Aktion');
+    expect((await a.request('game:action', {})).error).toBe('UNKNOWN_ACTION');
     const stranger = client();
-    expect((await stranger.request('game:start')).error).toBe('Nicht in einem Raum');
+    expect((await stranger.request('game:start')).error).toBe('NOT_IN_ROOM');
+  });
+
+  it('reports non-GameError exceptions as UNKNOWN without leaking the message', async () => {
+    const broken = new RoomManager(seeded(7));
+    broken.create = () => {
+      throw new Error('secret internals');
+    };
+    const other = createSkyjoServer({ manager: broken, botDelayMs: 0 });
+    await new Promise<void>((r) => other.httpServer.listen(0, r));
+    const port = (other.httpServer.address() as AddressInfo).port;
+    const socket = connect(`http://localhost:${port}`, { transports: ['websocket'], forceNew: true });
+    sockets.push(socket);
+    const res = await new Promise<any>((resolve) => socket.emit('room:create', { name: 'X' }, resolve));
+    expect(res).toEqual({ ok: false, error: 'UNKNOWN' });
+    socket.close();
+    await new Promise<void>((r) => other.io.close(() => r()));
   });
 
   it('a reload (new socket + token) restores the same view', async () => {
@@ -202,7 +218,7 @@ describe('session handling per socket', () => {
     const results: boolean[] = [];
     for (let i = 0; i < 6; i++) results.push((await a.request('room:create', { name: `P${i}` })).ok);
     expect(results).toEqual([true, true, true, true, true, false]);
-    expect((await a.request('room:create', { name: 'again' })).error).toBe('Zu viele Räume erstellt');
+    expect((await a.request('room:create', { name: 'again' })).error).toBe('TOO_MANY_ROOMS');
   });
 });
 
@@ -250,7 +266,7 @@ describe('per-IP limits', () => {
 describe('room settings', () => {
   it('the host sets the target score and everyone sees it', async () => {
     const { a, b } = await twoPlayers();
-    expect((await b.request('room:settings', { target: 50 })).error).toBe('Nur der Host kann das');
+    expect((await b.request('room:settings', { target: 50 })).error).toBe('HOST_ONLY');
     expect((await a.request('room:settings', { target: 50 })).ok).toBe(true);
     const s = await b.until((x) => x.room.target === 50);
     expect(s.room.target).toBe(50);
@@ -271,7 +287,7 @@ describe('nudge over sockets', () => {
     const got = new Promise<{ from: string }>((resolve) => current.socket.once('nudged', resolve));
     expect((await other.request('game:nudge')).ok).toBe(true);
     expect((await got).from).toBe(otherName);
-    expect((await current.request('game:nudge')).error).toBe('Du bist selbst dran');
+    expect((await current.request('game:nudge')).error).toBe('SELF_TURN');
     expect(joined.playerId).toBeTruthy();
   });
 });
@@ -307,8 +323,8 @@ describe('spectators over sockets', () => {
     expect(s.role).toBe('spectator');
     expect(s.game!.players).toHaveLength(2);
     for (const p of s.game!.players) for (const c of p.grid) if (c && !c.up) expect(c.value).toBeNull();
-    expect((await z.request('game:action', { type: 'flipInitial', slot: 0 })).error).toBe('Zuschauer können nicht spielen');
-    expect((await z.request('game:nudge')).error).toBe('Zuschauer können nicht spielen');
+    expect((await z.request('game:action', { type: 'flipInitial', slot: 0 })).error).toBe('SPECTATOR_CANNOT_PLAY');
+    expect((await z.request('game:nudge')).error).toBe('SPECTATOR_CANNOT_PLAY');
     expect((await z.request('room:play')).wantsToPlay).toBe(true);
     const seenByPlayer = await a.until((x) => x.room.spectatorCount === 1);
     expect(seenByPlayer.room.members.some((m) => m.spectator)).toBe(true);
@@ -357,8 +373,8 @@ describe('spectators over sockets', () => {
 describe('bots over sockets', () => {
   it('only the host adds bots with a valid level', async () => {
     const { a, b } = await twoPlayers();
-    expect((await b.request('room:addBot', { level: 'easy' })).error).toBe('Nur der Host kann das');
-    expect((await a.request('room:addBot', { level: 'godlike' })).error).toBe('Ungültige Bot-Stufe');
+    expect((await b.request('room:addBot', { level: 'easy' })).error).toBe('HOST_ONLY');
+    expect((await a.request('room:addBot', { level: 'godlike' })).error).toBe('INVALID_BOT_LEVEL');
     const ok = await a.request('room:addBot', { level: 'hard' });
     expect(ok.ok).toBe(true);
     expect(ok.id).toMatch(/^bot-/);
