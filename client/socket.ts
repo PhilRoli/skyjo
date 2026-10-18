@@ -9,7 +9,7 @@ export function request<T extends object = Record<string, never>>(
   return new Promise((resolve, reject) => {
     socket.emit(event, payload, (res: { ok: boolean; error?: string }) => {
       if (res?.ok) resolve(res as T);
-      else reject(new Error(res?.error ?? 'Unbekannter Fehler'));
+      else reject(new Error(res?.error ?? 'UNKNOWN'));
     });
   });
 }

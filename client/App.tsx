@@ -5,12 +5,15 @@ import Box from '@mui/material/Box';
 import Snackbar from '@mui/material/Snackbar';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { Suspense, lazy } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAnimations } from './animations';
 import { Chat } from './components/Chat';
+import { LanguageSwitch } from './components/LanguageSwitch';
 import { LeaveButton } from './components/LeaveButton';
 import { AnimationsToggle, RulesButton } from './components/RulesDialog';
 import { VersionBadge } from './components/VersionBadge';
 import { Home } from './screens/Home';
+import { translateError } from './lang';
 import { useGame } from './useGame';
 import { useWakeLock } from './useWakeLock';
 
@@ -43,6 +46,7 @@ const Lobby = lazy(() => import('./screens/Lobby').then((m) => ({ default: m.Lob
 const theme = createTheme({ palette: { mode: 'dark' } });
 
 export function App() {
+  const { t } = useTranslation();
   const g = useGame();
   useWakeLock(g.state?.game != null);
   const initialCode = new URLSearchParams(location.search).get('raum')?.toUpperCase() ?? '';
@@ -73,6 +77,7 @@ export function App() {
         </Suspense>
       </Container>
       {g.state && <Chat messages={g.chat} me={g.state.me} onSend={g.sendChat} />}
+      <LanguageSwitch />
       <VersionBadge devAllowed={!!g.state?.devAllowed} devOn={!!g.state?.dev} onToggleDev={g.setDev} />
       {g.nudgedBy !== null && <NudgeGlow />}
       <Snackbar open={g.nudgedBy !== null} autoHideDuration={5000} onClose={g.clearNudge}>
@@ -82,7 +87,7 @@ export function App() {
       </Snackbar>
       <Snackbar open={g.error !== null} autoHideDuration={4000} onClose={g.clearError}>
         <Alert severity="error" onClose={g.clearError}>
-          {g.error}
+          {g.error !== null && translateError(t, g.error)}
         </Alert>
       </Snackbar>
     </ThemeProvider>

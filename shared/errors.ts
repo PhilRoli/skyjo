@@ -1,5 +1,7 @@
 export const ERROR_CODES = [
   'UNKNOWN',
+  /** Client-only: shown after a `kicked` event. */
+  'REMOVED_FROM_ROOM',
   'ALREADY_PLAYING',
   'ALREADY_REVEALED',
   'BOTS_CANNOT_CHAT',

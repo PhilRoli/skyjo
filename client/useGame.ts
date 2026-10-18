@@ -52,7 +52,7 @@ export function useGame() {
       saveSession(null);
       setChat([]);
       setState(null);
-      setError('Du wurdest aus dem Raum entfernt');
+      setError('REMOVED_FROM_ROOM');
     };
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -78,7 +78,7 @@ export function useGame() {
       setError(null);
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unbekannter Fehler');
+      setError(e instanceof Error ? e.message : 'UNKNOWN');
     }
   }, []);
 
