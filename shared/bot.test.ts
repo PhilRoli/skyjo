@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { canAct, decide, extremeFallbackCount, newBotMemory, observe, registerExtreme, resetExtremeFallback, unseen, DECK_AVERAGE } from './bot';
+import { EASY_BLUNDER_RATE, canAct, decide, extremeFallbackCount, newBotMemory, observe, registerExtreme, resetExtremeFallback, unseen, DECK_AVERAGE } from './bot';
 import { installExtremeBot } from './extreme/load';
 import { FILL, cells, mkState, seeded } from './testUtils';
 import type { BotLevel } from './types';
@@ -35,6 +35,11 @@ function mkView(mine: Spec[], extra: Partial<PlayerView> = {}, theirs: Spec[] = 
 }
 
 const never = () => 0.99; // never takes a random branch
+/** The first draw (easy's blunder coin) is 0, so easy plays carelessly; every later draw is 0.99 (no random branches). */
+const careless = () => {
+  let first = true;
+  return () => (first ? ((first = false), 0) : 0.99);
+};
 const mem = () => newBotMemory();
 
 describe('decide: basics', () => {
@@ -68,17 +73,37 @@ describe('decide: basics', () => {
 });
 
 describe('easy', () => {
-  it('takes small discards and draws otherwise', () => {
-    expect(decide(mkView([], { discardTop: 3 }), 'easy', never, mem())).toEqual({ type: 'takeDiscard' });
-    expect(decide(mkView([], { discardTop: 9 }), 'easy', never, mem())).toEqual({ type: 'drawFromDeck' });
+  it('plays like normal when it does not blunder', () => {
+    const views = [
+      mkView([5, 5, 'h'], { discardTop: 5 }),
+      mkView([5, 5, 'h'], { phase: 'place', drawn: 5, drawnFrom: 'discard' }),
+      mkView([4, 4, 4], { phase: 'place', drawn: 9, drawnFrom: 'deck' }),
+      mkView([4, 4, 4, 7, 'h'], { discardTop: 12 }),
+    ];
+    for (const v of views) expect(decide(v, 'easy', never, mem())).toEqual(decide(v, 'normal', never, mem()));
   });
 
-  it('keeps small drawn cards and discards big deck cards', () => {
-    const small = decide(mkView([4, 4, 4], { phase: 'place', drawn: 2, drawnFrom: 'deck' }), 'easy', never, mem());
+  it('blunders on about EASY_BLUNDER_RATE of its moves', () => {
+    const rng = seeded(11);
+    const v = mkView([4, 4, 4], { phase: 'place', drawn: 9, drawnFrom: 'deck' }); // normal discards a 9; careless play often swaps
+    let swaps = 0;
+    const n = 4000;
+    for (let i = 0; i < n; i++) if ((decide(v, 'easy', rng, mem()) as { type: string }).type === 'swap') swaps++;
+    expect(swaps / n).toBeGreaterThan(0.03); // careless play swaps a 9 in about an eighth of its moves, times the blunder rate
+    expect(swaps / n).toBeLessThan(EASY_BLUNDER_RATE);
+  });
+
+  it('takes small discards and draws otherwise (careless play)', () => {
+    expect(decide(mkView([], { discardTop: 3 }), 'easy', careless(), mem())).toEqual({ type: 'takeDiscard' });
+    expect(decide(mkView([], { discardTop: 9 }), 'easy', careless(), mem())).toEqual({ type: 'drawFromDeck' });
+  });
+
+  it('keeps small drawn cards and discards big deck cards (careless play)', () => {
+    const small = decide(mkView([4, 4, 4], { phase: 'place', drawn: 2, drawnFrom: 'deck' }), 'easy', careless(), mem());
     expect(small).toMatchObject({ type: 'swap' });
-    const big = decide(mkView([4, 4, 4], { phase: 'place', drawn: 9, drawnFrom: 'deck' }), 'easy', never, mem());
+    const big = decide(mkView([4, 4, 4], { phase: 'place', drawn: 9, drawnFrom: 'deck' }), 'easy', careless(), mem());
     expect(big).toEqual({ type: 'discardDrawn' });
-    const fromDiscard = decide(mkView([4, 4, 4], { phase: 'place', drawn: 9, drawnFrom: 'discard' }), 'easy', never, mem());
+    const fromDiscard = decide(mkView([4, 4, 4], { phase: 'place', drawn: 9, drawnFrom: 'discard' }), 'easy', careless(), mem());
     expect(fromDiscard).toMatchObject({ type: 'swap' });
   });
 

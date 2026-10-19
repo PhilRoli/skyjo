@@ -15,10 +15,12 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       de: [
         'Neue Bot-Stufe Extrem: ein neuronales Netz, trainiert in vielen Partien gegen sich selbst und die anderen Bots.',
         'Extrem sieht wie alle Bots nur, was auch du siehst.',
+        'Leicht ist jetzt besser als reiner Zufall: spielt wie Normal, macht aber oft Fehler.',
       ],
       en: [
         'New bot level Extreme: a neural network trained in many games against itself and the other bots.',
         'Like every bot, Extreme only sees what you can see.',
+        'Easy is now better than pure chance: it plays like Normal but often makes mistakes.',
       ],
     },
   },

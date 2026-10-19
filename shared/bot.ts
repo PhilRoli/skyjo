@@ -176,7 +176,8 @@ function spreadSlot(c: Ctx): number {
 
 // ---------------------------------------------------------------- policies
 
-const easyPolicy: Policy = {
+/** Careless play: random-ish moves (about 57 points per round on its own). Easy mixes it into normal play. */
+const blunderPolicy: Policy = {
   draw(c) {
     const top = c.view.discardTop;
     if (top === null) return { type: 'drawFromDeck' };
@@ -287,7 +288,10 @@ const hardPolicy: Policy = {
   flip: (c) => bestFlip(c, unseen(c.view, c.mem)),
 };
 
-const POLICIES: Record<Exclude<BotLevel, 'extreme'>, Policy> = { easy: easyPolicy, normal: normalPolicy, hard: hardPolicy };
+/** Easy plays like normal, but on this share of its moves it plays carelessly instead (tuned to about 35 points per round). */
+export const EASY_BLUNDER_RATE = 0.55;
+
+const POLICIES: Record<'normal' | 'hard', Policy> = { normal: normalPolicy, hard: hardPolicy };
 
 // ---------------------------------------------------------------- extreme: neural net, registered by the server
 
@@ -345,10 +349,11 @@ export function decide(view: PlayerView, level: BotLevel, rng: Rng, mem: BotMemo
     rng,
     mem,
   };
+  const blunder = level === 'easy' && rng() < EASY_BLUNDER_RATE;
   if (view.phase === 'initialFlip') {
-    return { type: 'flipInitial', slot: level === 'easy' ? pick(ctx.hidden, rng) : spreadSlot(ctx) };
+    return { type: 'flipInitial', slot: blunder ? pick(ctx.hidden, rng) : spreadSlot(ctx) };
   }
-  const policy = POLICIES[level];
+  const policy = level === 'easy' ? (blunder ? blunderPolicy : normalPolicy) : POLICIES[level];
   switch (view.phase) {
     case 'draw':
       return policy.draw(ctx);

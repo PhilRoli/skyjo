@@ -48,6 +48,8 @@ describe('bot simulation', () => {
   it('plays better the higher the level: hard < normal < easy (average points per round)', () => {
     const m = pointsPerRound(permutations<BotLevel>(['easy', 'normal', 'hard']), 180, 1000);
     console.log('average points per round', m);
+    expect(m.easy!).toBeGreaterThan(30); // easy is tuned to about 35 points per round
+    expect(m.easy!).toBeLessThan(40);
     expect(m.normal!).toBeLessThan(m.easy! * 0.9);
     expect(m.hard!).toBeLessThan(m.normal! * 0.92);
   }, 180_000);
