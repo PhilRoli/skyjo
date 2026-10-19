@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { canAct, decide, newBotMemory, observe, unseen, DECK_AVERAGE } from './bot';
+import { describe, expect, it, vi } from 'vitest';
+import { EASY_BLUNDER_RATE, canAct, decide, extremeFallbackCount, newBotMemory, observe, registerExtreme, resetExtremeFallback, unseen, DECK_AVERAGE } from './bot';
+import { installExtremeBot } from './extreme/load';
 import { FILL, cells, mkState, seeded } from './testUtils';
 import type { BotLevel } from './types';
 import { viewFor, type PlayerView, type PublicCell } from './view';
@@ -34,6 +35,11 @@ function mkView(mine: Spec[], extra: Partial<PlayerView> = {}, theirs: Spec[] = 
 }
 
 const never = () => 0.99; // never takes a random branch
+/** The first draw (easy's blunder coin) is 0, so easy plays carelessly; every later draw is 0.99 (no random branches). */
+const careless = () => {
+  let first = true;
+  return () => (first ? ((first = false), 0) : 0.99);
+};
 const mem = () => newBotMemory();
 
 describe('decide: basics', () => {
@@ -67,17 +73,37 @@ describe('decide: basics', () => {
 });
 
 describe('easy', () => {
-  it('takes small discards and draws otherwise', () => {
-    expect(decide(mkView([], { discardTop: 3 }), 'easy', never, mem())).toEqual({ type: 'takeDiscard' });
-    expect(decide(mkView([], { discardTop: 9 }), 'easy', never, mem())).toEqual({ type: 'drawFromDeck' });
+  it('plays like normal when it does not blunder', () => {
+    const views = [
+      mkView([5, 5, 'h'], { discardTop: 5 }),
+      mkView([5, 5, 'h'], { phase: 'place', drawn: 5, drawnFrom: 'discard' }),
+      mkView([4, 4, 4], { phase: 'place', drawn: 9, drawnFrom: 'deck' }),
+      mkView([4, 4, 4, 7, 'h'], { discardTop: 12 }),
+    ];
+    for (const v of views) expect(decide(v, 'easy', never, mem())).toEqual(decide(v, 'normal', never, mem()));
   });
 
-  it('keeps small drawn cards and discards big deck cards', () => {
-    const small = decide(mkView([4, 4, 4], { phase: 'place', drawn: 2, drawnFrom: 'deck' }), 'easy', never, mem());
+  it('blunders on about EASY_BLUNDER_RATE of its moves', () => {
+    const rng = seeded(11);
+    const v = mkView([4, 4, 4], { phase: 'place', drawn: 9, drawnFrom: 'deck' }); // normal discards a 9; careless play often swaps
+    let swaps = 0;
+    const n = 4000;
+    for (let i = 0; i < n; i++) if ((decide(v, 'easy', rng, mem()) as { type: string }).type === 'swap') swaps++;
+    expect(swaps / n).toBeGreaterThan(0.03); // careless play swaps a 9 in about an eighth of its moves, times the blunder rate
+    expect(swaps / n).toBeLessThan(EASY_BLUNDER_RATE);
+  });
+
+  it('takes small discards and draws otherwise (careless play)', () => {
+    expect(decide(mkView([], { discardTop: 3 }), 'easy', careless(), mem())).toEqual({ type: 'takeDiscard' });
+    expect(decide(mkView([], { discardTop: 9 }), 'easy', careless(), mem())).toEqual({ type: 'drawFromDeck' });
+  });
+
+  it('keeps small drawn cards and discards big deck cards (careless play)', () => {
+    const small = decide(mkView([4, 4, 4], { phase: 'place', drawn: 2, drawnFrom: 'deck' }), 'easy', careless(), mem());
     expect(small).toMatchObject({ type: 'swap' });
-    const big = decide(mkView([4, 4, 4], { phase: 'place', drawn: 9, drawnFrom: 'deck' }), 'easy', never, mem());
+    const big = decide(mkView([4, 4, 4], { phase: 'place', drawn: 9, drawnFrom: 'deck' }), 'easy', careless(), mem());
     expect(big).toEqual({ type: 'discardDrawn' });
-    const fromDiscard = decide(mkView([4, 4, 4], { phase: 'place', drawn: 9, drawnFrom: 'discard' }), 'easy', never, mem());
+    const fromDiscard = decide(mkView([4, 4, 4], { phase: 'place', drawn: 9, drawnFrom: 'discard' }), 'easy', careless(), mem());
     expect(fromDiscard).toMatchObject({ type: 'swap' });
   });
 
@@ -246,5 +272,69 @@ describe('hard', () => {
   it('flips the hidden card in a column that already holds two equal cards', () => {
     const v = mkView([1, 'h', 'h', 4, 4, 'h', 'h', 'h', 'h', 'h', 'h', 'h'], { phase: 'flipAfterDiscard' });
     expect(decide(v, 'hard', never, memWith(v))).toEqual({ type: 'flipHidden', slot: 5 });
+  });
+});
+
+describe('extreme', () => {
+  it('falls back to the hard policy (logged once) when the net is missing or throws: a table never freezes', () => {
+    resetExtremeFallback();
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const views = [
+      mkView([4, 5]),
+      mkView([4, 5], { phase: 'place', drawn: 2, drawnFrom: 'deck' }),
+      mkView([4, 5], { phase: 'flipAfterDiscard' }),
+      mkView([], { phase: 'initialFlip', current: null }),
+    ];
+    registerExtreme(null);
+    for (const v of views) expect(decide(v, 'extreme', seeded(3), mem())).toEqual(decide(v, 'hard', seeded(3), mem()));
+    registerExtreme(() => {
+      throw new Error('bad input size');
+    });
+    for (const v of views) {
+      const a = decide(v, 'extreme', seeded(4), mem());
+      expect(a).toEqual(decide(v, 'hard', seeded(4), mem()));
+      expect(a).not.toBeNull();
+    }
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(extremeFallbackCount()).toBe(2 * views.length);
+    resetExtremeFallback(); // counter back to 0 and the next failure is logged again
+    expect(extremeFallbackCount()).toBe(0);
+    decide(views[0], 'extreme', seeded(5), mem());
+    expect(extremeFallbackCount()).toBe(1);
+    expect(log).toHaveBeenCalledTimes(2);
+    resetExtremeFallback();
+    log.mockRestore();
+  });
+
+  it('plays every phase through the net once installed', () => {
+    expect(decide(mkView([], { current: 'opp' }), 'extreme', never, mem())).toBeNull(); // nothing to do: no net needed
+    installExtremeBot();
+    expect(decide(mkView([], { phase: 'initialFlip', current: null }), 'extreme', never, mem())).toMatchObject({ type: 'flipInitial' });
+    expect(decide(mkView([4, 5], { phase: 'initialFlip', current: null }), 'extreme', never, mem())).toBeNull();
+    expect(['drawFromDeck', 'takeDiscard']).toContain(decide(mkView([4, 5]), 'extreme', never, mem())!.type);
+    expect(['swap', 'discardDrawn']).toContain(decide(mkView([4, 5], { phase: 'place', drawn: 2, drawnFrom: 'deck' }), 'extreme', never, mem())!.type);
+    expect(decide(mkView([4, 5], { phase: 'place', drawn: 2, drawnFrom: 'discard' }), 'extreme', never, mem())!.type).toBe('swap');
+    const flip = decide(mkView([4, 5], { phase: 'flipAfterDiscard' }), 'extreme', never, mem()) as { type: string; slot: number };
+    expect(flip.type).toBe('flipHidden');
+    expect(flip.slot).toBeGreaterThanOrEqual(2);
+  });
+
+  it('decides the same for the same view, whatever the hidden cards, the deck or the rng', () => {
+    installExtremeBot();
+    const s1 = mkState([cells(FILL, [2, 5]), cells(FILL, [0])]);
+    const s2 = mkState([cells([...FILL.slice(0, 2), 12, ...FILL.slice(3)], [2, 5]), cells(FILL, [0])], { deck: [1, 1, 1, 1] });
+    expect(viewFor(s1, 'A')).toEqual(viewFor(s2, 'A'));
+    expect(decide(viewFor(s1, 'A'), 'extreme', seeded(1), mem())).toEqual(decide(viewFor(s2, 'A'), 'extreme', seeded(2), mem()));
+  });
+
+  it('is fast: 1000 decisions in under 2 s', () => {
+    installExtremeBot();
+    const views = [mkView([4, 5]), mkView([4, 5], { phase: 'place', drawn: 2, drawnFrom: 'deck' }), mkView([4, 5], { phase: 'flipAfterDiscard' })];
+    for (let i = 0; i < 50; i++) decide(views[i % 3], 'extreme', never, mem()); // warm up the JIT
+    const t = performance.now();
+    for (let i = 0; i < 1000; i++) decide(views[i % 3], 'extreme', never, mem());
+    const ms = performance.now() - t;
+    console.log(`extreme: 1000 decisions in ${ms.toFixed(0)} ms`);
+    expect(ms).toBeLessThan(2000);
   });
 });

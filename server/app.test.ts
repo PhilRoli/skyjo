@@ -380,6 +380,8 @@ describe('bots over sockets', () => {
     expect(ok.id).toMatch(/^bot-/);
     const s = await b.until((x) => x.room.members.some((m) => m.bot));
     expect(s.room.members.find((m) => m.bot)?.bot).toEqual({ level: 'hard' });
+    expect((await a.request('room:addBot', { level: 'extreme' })).ok).toBe(true);
+    expect((await a.request('room:addBot', { level: 'Extreme' })).error).toBe('INVALID_BOT_LEVEL');
   });
 
   it('bots flip their initial cards and take their turns on their own', async () => {
