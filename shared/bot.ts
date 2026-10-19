@@ -27,6 +27,18 @@ export interface BotMemory {
   deckCount: number;
   discard: number[];
   prevEvents: GameEvent[];
+  /** Repetition guard of the extreme bot (see shared/extreme/policy.ts); unused by the other levels. */
+  stall?: StallGuard;
+}
+
+export interface StallGuard {
+  round: number;
+  /** Own turns (draw decisions) in this round. */
+  turns: number;
+  /** How often each table signature came up at one of my decisions in this round. */
+  seen: Map<string, number>;
+  /** Once set, every own turn of this round turns a hidden card face up. */
+  forced: boolean;
 }
 
 export const newBotMemory = (): BotMemory => ({ round: -1, seq: -1, deckCount: Infinity, discard: [], prevEvents: [] });
@@ -164,7 +176,8 @@ function spreadSlot(c: Ctx): number {
 
 // ---------------------------------------------------------------- policies
 
-const easyPolicy: Policy = {
+/** Careless play: random-ish moves (about 57 points per round on its own). Easy mixes it into normal play. */
+const blunderPolicy: Policy = {
   draw(c) {
     const top = c.view.discardTop;
     if (top === null) return { type: 'drawFromDeck' };
@@ -275,7 +288,33 @@ const hardPolicy: Policy = {
   flip: (c) => bestFlip(c, unseen(c.view, c.mem)),
 };
 
-const POLICIES: Record<BotLevel, Policy> = { easy: easyPolicy, normal: normalPolicy, hard: hardPolicy };
+/** Easy plays like normal, but on this share of its moves it plays carelessly instead (tuned to about 35 points per round). */
+export const EASY_BLUNDER_RATE = 0.55;
+
+const POLICIES: Record<'normal' | 'hard', Policy> = { normal: normalPolicy, hard: hardPolicy };
+
+// ---------------------------------------------------------------- extreme: neural net, registered by the server
+
+export type ExtremeDecider = (view: PlayerView, rng: Rng, mem: BotMemory) => Action;
+
+let extremeDecider: ExtremeDecider | null = null;
+let extremeFailureLogged = false;
+let extremeFallbacks = 0;
+
+/** How many extreme moves were played by the hard policy because the net path failed (simulations assert 0). */
+export const extremeFallbackCount = (): number => extremeFallbacks;
+
+/** Test hook: zero the counter and log the next failure again. */
+export function resetExtremeFallback(): void {
+  extremeFallbacks = 0;
+  extremeFailureLogged = false;
+}
+
+/** The net weights are large and must stay out of the browser bundle, so this module never imports them:
+ * the server (and tests) register the extreme bot here, see `installExtremeBot` in shared/extreme/load.ts. */
+export function registerExtreme(decider: ExtremeDecider | null): void {
+  extremeDecider = decider;
+}
 
 // ---------------------------------------------------------------- public API
 
@@ -288,6 +327,18 @@ export function canAct(view: PlayerView): boolean {
 
 export function decide(view: PlayerView, level: BotLevel, rng: Rng, mem: BotMemory): Action | null {
   if (!canAct(view)) return null;
+  if (level === 'extreme') {
+    try {
+      if (!extremeDecider) throw new Error('extreme bot is not installed (installExtremeBot)');
+      return extremeDecider(view, rng, mem);
+    } catch (e) {
+      // A bot that cannot move would freeze the table: play this move like the hard bot instead.
+      if (!extremeFailureLogged) console.error('extreme bot failed, playing as hard instead', e);
+      extremeFailureLogged = true;
+      extremeFallbacks++;
+      level = 'hard';
+    }
+  }
   const me = view.players.find((p) => p.id === view.me)!;
   const ctx: Ctx = {
     view,
@@ -298,10 +349,11 @@ export function decide(view: PlayerView, level: BotLevel, rng: Rng, mem: BotMemo
     rng,
     mem,
   };
+  const blunder = level === 'easy' && rng() < EASY_BLUNDER_RATE;
   if (view.phase === 'initialFlip') {
-    return { type: 'flipInitial', slot: level === 'easy' ? pick(ctx.hidden, rng) : spreadSlot(ctx) };
+    return { type: 'flipInitial', slot: blunder ? pick(ctx.hidden, rng) : spreadSlot(ctx) };
   }
-  const policy = POLICIES[level];
+  const policy = level === 'easy' ? (blunder ? blunderPolicy : normalPolicy) : POLICIES[level];
   switch (view.phase) {
     case 'draw':
       return policy.draw(ctx);

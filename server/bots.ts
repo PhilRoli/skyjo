@@ -1,4 +1,5 @@
 import { canAct, decide, newBotMemory, observe, type BotMemory } from '../shared/bot';
+import { installExtremeBot } from '../shared/extreme/load';
 import type { Rng } from '../shared/types';
 import type { RoomManager } from './rooms';
 
@@ -28,6 +29,7 @@ export class BotRunner {
     this.rng = opts.rng ?? Math.random;
     this.onError = opts.onError ?? ((e) => console.error('bot move failed', e));
     this.onActed = opts.onActed ?? (() => {});
+    installExtremeBot();
   }
 
   /** Call after every change of a room. */

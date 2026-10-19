@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decide, newBotMemory, observe } from '../shared/bot';
+import { decide, extremeFallbackCount, newBotMemory, observe, resetExtremeFallback } from '../shared/bot';
 import { seeded } from '../shared/testUtils';
 import type { BotLevel, Rng } from '../shared/types';
 import { BotRunner } from './bots';
@@ -50,7 +50,8 @@ async function playOut(m: RoomManager, code: string, humanId: string) {
 
 describe('BotRunner', () => {
   it('plays the bots through a whole game next to a human and waits for the host between rounds', async () => {
-    const { m, h, code, botIds, runner } = setup(['easy', 'normal', 'hard']);
+    const { m, h, code, botIds, runner } = setup(['easy', 'normal', 'hard', 'extreme']);
+    resetExtremeFallback();
     const acted = new Set<string>();
     const act = m.act.bind(m);
     m.act = (c: string, id: string, a: unknown) => {
@@ -62,13 +63,14 @@ describe('BotRunner', () => {
     expect(final.phase).toBe('gameOver');
     expect(final.winners.length).toBeGreaterThan(0);
     for (const id of botIds) expect(acted.has(id)).toBe(true);
+    expect(extremeFallbackCount()).toBe(0); // the extreme bot moved through the net
     runner.dispose();
   });
 
   it('resumes pending bot moves after a restore', async () => {
     const m1 = new RoomManager(seeded(3));
     const h = m1.create('Anna');
-    const botId = m1.addBot(h.code, h.playerId, 'normal');
+    const botId = m1.addBot(h.code, h.playerId, 'extreme');
     m1.start(h.code, h.playerId); // no runner: the bot has not moved yet
     const m2 = new RoomManager(seeded(3));
     const runner = new BotRunner(m2, { delayMs: 0, rng: seeded(9) });

@@ -75,7 +75,8 @@
   "botLevel": {
     "easy": "Easy",
     "normal": "Normal",
-    "hard": "Hard"
+    "hard": "Hard",
+    "extreme": "Extreme"
   },
   "table": {
     "flipTwo": "Flip 2 cards ({{count}}/2)",

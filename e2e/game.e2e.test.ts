@@ -96,6 +96,7 @@ describe('full game against the real server process', () => {
     const { host, port, dataDir } = await setup(1);
     expect((await host.request('room:addBot', { level: 'normal' })).ok).toBe(true);
     expect((await host.request('room:addBot', { level: 'hard' })).ok).toBe(true);
+    expect((await host.request('room:addBot', { level: 'extreme' })).ok).toBe(true); // restored from rooms.json after the restart
     expect((await host.request('game:start')).ok).toBe(true);
 
     await waitFor(() => (host.last()?.game?.eventSeq ?? 0) >= 12, 30_000, 'some turns');
@@ -107,9 +108,9 @@ describe('full game against the real server process', () => {
     await waitFor(() => gameOver(host), 60_000, 'game over after the restart');
 
     const botIds = host.last()!.room.members.filter((m) => m.bot).map((m) => m.id);
-    expect(botIds).toHaveLength(2);
-    expect(host.states.some((s) => s.game?.events.some((e) => botIds.includes(e.by)))).toBe(true);
-    expect(host.last()!.game!.players).toHaveLength(3);
+    expect(botIds).toHaveLength(3);
+    for (const id of botIds) expect(host.states.some((s) => s.game?.events.some((e) => e.by === id))).toBe(true);
+    expect(host.last()!.game!.players).toHaveLength(4);
     expect(host.last()!.game!.winners.length).toBeGreaterThan(0);
     bots.forEach(expectNoHiddenValueLeaked);
   });
