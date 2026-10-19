@@ -29,7 +29,7 @@ function pointsPerRound(orders: BotLevel[][], games: number, seed: number): Part
 const PLACEHOLDER = isPlaceholderSource(WEIGHTS_SOURCE);
 const GATE_NOTE = `weights.json is a placeholder ("${WEIGHTS_SOURCE}"): strength not asserted`;
 /** Win share above the fair share 1/n that the extreme bot must reach against hard bots. */
-const DUEL_MARGIN = 0.05;
+const DUEL_MARGIN = 0.2;
 
 describe('bot simulation', () => {
   // Every extreme move must come from the net: a silent fallback to hard would fake the results.
