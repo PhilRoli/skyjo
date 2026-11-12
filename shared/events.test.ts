@@ -10,7 +10,7 @@ const nameOf = (id: string) => names[id];
 function translator(lng: 'de' | 'en'): Translate {
   const i18n = createInstance();
   void i18n.init({ lng, resources: { de: { translation: de }, en: { translation: en } }, interpolation: { escapeValue: false }, initAsync: false });
-  return i18n.t.bind(i18n) as Translate;
+  return i18n.t.bind(i18n) as unknown as Translate;
 }
 const [tde, ten] = [translator('de'), translator('en')];
 
