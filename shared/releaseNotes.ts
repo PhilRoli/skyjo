@@ -9,6 +9,14 @@ export interface ReleaseNote {
 /** Newest first. Shown in the app when clicking the version. Every entry needs German and English. */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.8.2',
+    title: { de: 'Wartung und Updates', en: 'Maintenance and updates' },
+    items: {
+      de: ['Übersetzungsbibliotheken auf neue Hauptversionen aktualisiert.', 'Keine Änderungen am Spiel.'],
+      en: ['Updated translation libraries to new major versions.', 'No changes to the game.'],
+    },
+  },
+  {
     version: '1.8.1',
     title: { de: 'Wartung und Updates', en: 'Maintenance and updates' },
     items: {

@@ -23,16 +23,16 @@ describe('release notes', () => {
   });
 
   it('announces the extreme bot in 1.8.0', () => {
-    expect(RELEASE_NOTES[1].version).toBe('1.8.0');
-    expect(RELEASE_NOTES[1].items.de.join(' ')).toMatch(/Extrem/);
-    expect(RELEASE_NOTES[1].items.en.join(' ')).toMatch(/Extreme/);
+    expect(RELEASE_NOTES[2].version).toBe('1.8.0');
+    expect(RELEASE_NOTES[2].items.de.join(' ')).toMatch(/Extrem/);
+    expect(RELEASE_NOTES[2].items.en.join(' ')).toMatch(/Extreme/);
   });
 
   it('has the spectator and bot release as 1.3.0 below 1.3.1 and everything before it as 1.2.0', () => {
-    expect(RELEASE_NOTES.map((r) => r.version).slice(0, 15)).toEqual(['1.8.1', '1.8.0', '1.7.0', '1.6.5', '1.6.4', '1.6.3', '1.6.2', '1.6.1', '1.6.0', '1.5.1', '1.5.0', '1.4.0', '1.3.1', '1.3.0', '1.2.0']);
-    expect(RELEASE_NOTES[13].items.de.join(' ')).toMatch(/Zuschauer/);
-    expect(RELEASE_NOTES[13].items.de.join(' ')).toMatch(/Bot/);
-    expect(RELEASE_NOTES[13].items.en.join(' ')).toMatch(/spectator/i);
-    expect(RELEASE_NOTES[13].items.en.join(' ')).toMatch(/bot/i);
+    expect(RELEASE_NOTES.map((r) => r.version).slice(0, 16)).toEqual(['1.8.2', '1.8.1', '1.8.0', '1.7.0', '1.6.5', '1.6.4', '1.6.3', '1.6.2', '1.6.1', '1.6.0', '1.5.1', '1.5.0', '1.4.0', '1.3.1', '1.3.0', '1.2.0']);
+    expect(RELEASE_NOTES[14].items.de.join(' ')).toMatch(/Zuschauer/);
+    expect(RELEASE_NOTES[14].items.de.join(' ')).toMatch(/Bot/);
+    expect(RELEASE_NOTES[14].items.en.join(' ')).toMatch(/spectator/i);
+    expect(RELEASE_NOTES[14].items.en.join(' ')).toMatch(/bot/i);
   });
 });
